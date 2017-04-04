@@ -29,8 +29,8 @@ int SampleHandler<T>::make_train_and_valid(const SampleSet<T>& sample_set, \
     *train = sample_set;  // copying sample set to train
     int class_num = train->get_size();  // doing this to have samples of every
     for (int i = 0; i < class_num; i++) {  // class in validation set
-        int tear_num = 2*static_cast<int>(log((*train)[i].get_size(), 10))+1;
-        (*train)[i].tearup(tear_num, &torn_X, &torn_y);
+        int tear_num = 2*static_cast<int>(log(train->get_class(i).get_size(), 10))+1;
+        train->get_class(i).tearup(tear_num, &torn_X, &torn_y);
         valid->append(torn_X, torn_y);
     }
 

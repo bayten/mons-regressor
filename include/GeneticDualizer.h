@@ -1,6 +1,6 @@
 /* Copyright 2017 Baytekov Nikita */
 #include "../include/default_types.h"
-#include "../include/containers.h"
+#include "../include/CollFamily.h"
 #include "../include/SampleHandler.h"
 
 #ifndef INCLUDE_GENETICDUALIZER_H_

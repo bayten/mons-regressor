@@ -3,40 +3,12 @@
 #include "../include/SampleSet.h"
 
 template<class T>
-ClassSamples<T>::ClassSamples(Mat<T> init_objs, int init_tag) :
-    objs(init_objs), class_tag(init_tag) {
-}
-
-template<class T>
-ClassSamples<T>::~ClassSamples() {
-}
-
-template<class T>
 void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
     std::random_shuffle(&(objs[0]), &(objs[-1]));
     *torn_x = objs.cutslice(0, tear_num);
     *torn_y = Vec<int>(tear_num);
     for (int j = 0; j < tear_num; j++)
         (*torn_y)[j] = class_tag;
-}
-
-
-template<class T>
-SampleSet<T>::SampleSet(int size) : samples(size) {
-}
-
-template<class T>
-SampleSet<T>::SampleSet(const SampleSet& copy_obj):
-        samples(copy_obj.samples) {
-}
-
-template<class T>
-SampleSet<T>::SampleSet(SampleSet&& move_obj):
-    samples(std::move(move_obj.samples)) {
-}
-
-template<class T>
-SampleSet<T>::~SampleSet() {
 }
 
 template<class T>
@@ -75,11 +47,24 @@ void SampleSet<T>::shuffle() {
 }
 
 template<class T>
-ClassSamples<T>& SampleSet<T>::operator[](int index_tag) {
+ClassSamples<T>& SampleSet<T>::get_class(int index_tag) {
     int samples_size = samples.get_size();
     for (int i = 0; i < samples_size; i++)
         if (samples[i].class_tag == index_tag)
             return samples[i];
 
     return samples[0];
+}
+
+template<class T>
+Vec<T>& SampleSet<T>::operator[](int abs_index) {
+    int samples_num = samples.get_size();
+    for (int i = 0; i < samples_num; i++) {
+        if (abs_index < samples[i].get_size())
+            return samples[i][abs_index];
+
+        abs_index -= samples[i].get_size();
+    }
+
+    return samples[-1][-1];
 }

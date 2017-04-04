@@ -23,8 +23,9 @@ class Vec {
     T & operator[](int index);
 
     void append(T apnd_obj, int index = -1);
-    Vec<T> cutslice(int begin, int end);
-    int get_size() {
+    Vec<T> cutslice(int begin, int end) const;
+    Vec<T> sort() const;
+    int get_size() const {
         return sz;
     }
 };
@@ -146,7 +147,7 @@ void Vec<T>::append(T apnd_obj, int index) {
 }
 
 template<class T>
-Vec<T> Vec<T>::cutslice(int begin, int end) {
+Vec<T> Vec<T>::cutslice(int begin, int end) const {
     T* old_data = data;
     int slice_sz = end+1-begin;
     data = new T[sz-slice_sz];
@@ -164,6 +165,16 @@ Vec<T> Vec<T>::cutslice(int begin, int end) {
     return carved_slice;
 }
 
+template<class T>
+Vec<T> Vec<T>::sort() const {
+    T* new_data = new T[sz];
+    for (int i = 0; i < sz; i++) {
+        new_data[i] = data[i];
+    }
+
+    std::sort(std::begin(new_data), std::end(new_data));
+    return Vec<T>(sz, new_data);
+}
 
 template<class T>
 class Mat {
@@ -231,11 +242,11 @@ class Mat {
         return data[index];
     }
 
-    int get_sx() {
+    int get_sx() const {
         return sx;
     }
 
-    int get_sy() {
+    int get_sy() const {
         return sy;
     }
 };
