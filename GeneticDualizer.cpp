@@ -1,2 +1,2 @@
 /* Copyright 2017 Baytekov Nikita */
-#include "GeneticDualizer.h"
+#include "./include/GeneticDualizer.h"

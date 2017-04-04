@@ -23,6 +23,7 @@ class Vec {
     T & operator[](int index);
 
     void append(T apnd_obj, int index = -1);
+    bool erase(int index = -1);
     Vec<T> cutslice(int begin, int end) const;
     Vec<T> sort() const;
     int get_size() const {
@@ -144,6 +145,28 @@ void Vec<T>::append(T apnd_obj, int index) {
     old_data = nullptr;
 
     sz++;
+}
+
+template<class T>
+bool Vec<T>::erase(int index) {
+    if (data == nullptr || (index < 0 && index != -1) || index >= sz)
+        return 0;
+
+    T* old_data = data;
+    data = new T[--sz];
+
+    if (index == -1) {
+        for (int i = 0; i < sz-1; i++)
+            data[i] = old_data[i];
+    } else {
+        for (int i = 0; i < index; i++)
+            data[i] = old_data[i];
+        for (int i = index; i < sz-1; i++)
+            data[i] = old_data[i+1];
+    }
+
+    delete [] old_data;
+    old_data = nullptr;
 }
 
 template<class T>

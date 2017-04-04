@@ -12,6 +12,14 @@ void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
 }
 
 template<class T>
+SampleSet<T>::SampleSet(Vec< ClassSamples<T> > init_samples) :
+        samples(init_samples), total_size(0) {
+    int class_num = samples.get_size();
+    for (int i = 0; i < class_num; i++)
+        total_size += samples[i].get_size();
+}
+
+template<class T>
 void SampleSet<T>::append(Mat<T> X, Vec<int> y) {
     int obj_num = y.get_size();
     int samples_size = samples.get_size();

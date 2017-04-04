@@ -31,6 +31,7 @@ class SampleSet {
 
  public:
     explicit SampleSet(int size = 0) : samples(size), total_size(size) {}  // default constructor
+    explicit SampleSet(Vec< ClassSamples<T> > init_samples);
     explicit SampleSet(const SampleSet& copy_obj) :  // copy constructor
                 samples(copy_obj.samples),
                 total_size(copy_obj.get_total_size()) {}
