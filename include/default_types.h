@@ -4,8 +4,9 @@
 
 #include <iostream>
 #include <algorithm>
+#include <vector>
 
-template<class T>
+template<typename T>
 class Vec {
  private:
     T* data;
@@ -26,12 +27,13 @@ class Vec {
     bool erase(int index = -1);
     Vec<T> cutslice(int begin, int end) const;
     Vec<T> sort() const;
+    Vec<int> sort_indices() const;
     int get_size() const {
         return sz;
     }
 };
 
-template<class T>
+template<typename T>
 Vec<T>::Vec(int size) {
     sz = size;
     if (sz > 0)
@@ -40,7 +42,7 @@ Vec<T>::Vec(int size) {
         data = nullptr;
 }
 
-template<class T>
+template<typename T>
 Vec<T>::Vec(int size, T init_vals[]) {
     sz = size;
 
@@ -130,9 +132,7 @@ void Vec<T>::append(T apnd_obj, int index) {
     if (index == -1 || index+1 >= sz) {
         for (int i = 0; i < sz; i++)
             data[i] = old_data[i];
-
         data[sz] = apnd_obj;
-
     } else {
         for (int i = 0; i < index; i++)
             data[i] = old_data[i];
@@ -191,13 +191,22 @@ Vec<T> Vec<T>::cutslice(int begin, int end) const {
 template<class T>
 Vec<T> Vec<T>::sort() const {
     T* new_data = new T[sz];
-    for (int i = 0; i < sz; i++) {
+    for (int i = 0; i < sz; i++)
         new_data[i] = data[i];
-    }
 
     std::sort(std::begin(new_data), std::end(new_data));
     return Vec<T>(sz, new_data);
 }
+
+template<class T>
+Vec<int> Vec<T>::sort_indices() const {
+    std::vector<int>idx(sz);
+    std::iota(std::begin(idx), std::end(idx), 0);
+    std::sort(std::begin(idx), std::end(idx),
+              [this](int i1, int i2) { return this->data[i1] < this->data[i2]; });
+    return Vec<int>(sz, idx);
+}
+
 
 template<class T>
 class Mat {
