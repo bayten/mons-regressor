@@ -2,86 +2,103 @@
 #include "./include/GeneticAlgorithm.h"
 
 template<typename T>
-bool Individual<T>::operator== (const Individual<T>& comp_obj) {
-    if (data == comp_obj.get_data() && score == comp_obj.get_score())
-        return 1;
-    return 0;
+Chromosome<T>::Chromosome(Vec<T> init_genes, float init_score):
+        genes(init_genes), score(init_score) {
 }
 
 template<typename T>
-Individual<T> Individual<T>::operator*(const Individual<T>& cross_obj) {
-    Individual<T> new_obj = *this;
-    return new_obj;
+Chromosome<T>::Chromosome(T init_gene, float init_score):
+        genes(1, &init_gene), score(init_score) {
 }
 
 template<typename T>
-float Individual<T>::operator%(const Individual<T>& geno_obj) {
-    return 0.0;
+Chromosome<T>::Chromosome(const Chromosome<T>& chromo_obj):
+        genes(chromo_obj.get_genes()), score(chromo_obj.get_score()) {
+}
+
+template<typename T>
+Chromosome<T>& Chromosome<T>::operator=(const Chromosome<T>& chromo_obj) {
+    genes = chromo_obj.get_genes();
+    score = chromo_obj.get_score();
+    return (*this);
+}
+
+template<typename T>
+bool Chromosome<T>::operator==(const Chromosome<T>& chromo_obj) {
+    int chromo_size = genes.get_size();
+    if (chromo_size != chromo_obj.get_size() || score != chromo_obj.get_score())
+        return 0;
+
+    Vec<T> obj_genes = chromo_obj.get_genes();
+    for (int i = 0; i < chromo_size; i++)
+        if (obj_genes[i] != genes[i])
+            return 0;
+    return 1;
 }
 
 
-template<template <typename IT> class I, typename T>
-bool Population<I, T>::add_individual(I<T> add_obj) {
-    int ind_num = ind_vec.get_size();
+template<typename T>
+bool Population<T>::add_chromo(Chromosome<T> add_obj) {
+    int chromo_num = chromo_vec.get_size();
     T add_obj_data = add_obj.get_data();
 
-    for (int i = 0; i < ind_num; i++)
-        if (add_obj_data == ind_vec[i].get_data())
+    for (int i = 0; i < chromo_num; i++)
+        if (add_obj_data == chromo_vec[i].get_genes())
             return 0;
-    ind_vec.append(add_obj);
+    chromo_vec.append(add_obj);
 
     return 1;
 }
 
-template<template <typename IT> class I, typename T>
-bool Population<I, T>::del_individual(int idx) {
-    return ind_vec.erase(idx);
+template<typename T>
+bool Population<T>::del_chromo(int idx) {
+    return chromo_vec.erase(idx);
 }
 
-template<template <typename IT> class I, typename T>
-float Population<I, T>::get_avg_score() const {
-    int ind_num = ind_vec.get_size();
+template<typename T>
+float Population<T>::get_avg_score() const {
+    int chromo_num = chromo_vec.get_size();
     float total_score = 0.0;
-    for (int i = 0; i < ind_num; i++)
-        total_score += ind_vec[i].get_score();
+    for (int i = 0; i < chromo_num; i++)
+        total_score += chromo_vec[i].get_score();
 
     return total_score;
 }
 
-template<template <typename IT> class I, typename T>
-const I<T>& Population<I, T>::get_best_ind() const {
-    int ind_num = ind_vec.get_size();
+template<typename T>
+const Chromosome<T>& Population<T>::get_best_ind() const {
+    int chromo_num = chromo_vec.get_size();
     int idx = 0;
-    float max_score = ind_vec[idx];
-    for (int i = 1; i < ind_num; i++)
-        if (ind_vec[i].get_score() > max_score) {
+    float max_score = chromo_vec[idx];
+    for (int i = 1; i < chromo_num; i++)
+        if (chromo_vec[i].get_score() > max_score) {
             idx = i;
-            max_score = ind_vec[idx];
+            max_score = chromo_vec[idx];
         }
 
-    return ind_vec[idx];
+    return chromo_vec[idx];
 }
 
 
-template<template<typename IT> class I, typename T>
-Population<I, T> TournamentSelector<I, T>::select_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int popul_size = in_popul.get_popul_size();
+template<typename T>
+Population<T> TournamentSelector<T>::select_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int popul_size = in_popul.get_size();
     int needed_size = in_popul * this->popul_frac;
 
     for (int i = 0; i < needed_size; i++) {
-        I<T> fst_candidate = in_popul[rand_r(time(0)) % popul_size];
-        I<T> sec_candidate = in_popul[rand_r(time(0)) % popul_size];
+        Chromosome<T> fst_chromo = in_popul[rand_r(time(0)) % popul_size];
+        Chromosome<T> sec_chromo = in_popul[rand_r(time(0)) % popul_size];
 
-        if (fst_candidate == sec_candidate) {
+        if (fst_chromo == sec_chromo) {
             i--;
             continue;
-        } else if (fst_candidate.get_score() >= sec_candidate.get_score()) {
-            if (!out_popul.add_individual(fst_candidate)) {
+        } else if (fst_chromo.get_score() >= sec_chromo.get_score()) {
+            if (!out_popul.add_chromo(fst_chromo)) {
                 i--;
                 continue;
             }
-        } else if (!out_popul.add_individual(sec_candidate)) {
+        } else if (!out_popul.add_chromo(sec_chromo)) {
             i--;
             continue;
         }
@@ -90,128 +107,216 @@ Population<I, T> TournamentSelector<I, T>::select_population(const Population<I,
 }
 
 
-template<template<typename IT> class I, typename T>
-Population<I, T> RouletteSelector<I, T>::select_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int popul_size = in_popul.get_popul_size();
+template<typename T>
+Population<T> RouletteSelector<T>::select_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int popul_size = in_popul.get_size();
     int needed_size = in_popul * this->population_fraction;
-    Vec<float> probabilities(popul_size);
+    Vec<float> probs(popul_size);  // probs will be stored here
     float total_score = 0;
     for (int i = 0; i < popul_size; i++) {
-        probabilities[i] = out_popul[i].get_score();
-        total_score += probabilities[i];
+        probs[i] = out_popul[i].get_score();
+        total_score += probs[i];
     }
     for (int i = 0; i < popul_size; i++)
-        probabilities[i] /= total_score;
+        probs[i] /= total_score;
 
     for (int i = 0; i < needed_size; i++) {
         float rand_frac = static_cast<float>(rand_r(time(0))) / (RAND_MAX);
-        int candidate_idx = 0;
-        for (; candidate_idx < popul_size; candidate_idx++) {
-            if (rand_frac < probabilities[candidate_idx])
+        int chromo_idx = 0;
+        for (; chromo_idx < popul_size; chromo_idx++) {
+            if (rand_frac < probs[chromo_idx])
                 break;
-            rand_frac -= probabilities[candidate_idx];
+            rand_frac -= probs[chromo_idx];
         }
-        if (!out_popul.add_individual(in_popul[candidate_idx]))
+        if (!out_popul.add_chromo(in_popul[chromo_idx]))
             i--;
     }
     return out_popul;
 }
 
-template<template<typename IT> class I, typename T>
-RankingSelector<I, T>::RankingSelector(int init_pfrac, int init_uniform) :
-        GeneticSelector<I, T>(init_pfrac),
-        uniform_thresh(init_uniform) {
+template<typename T>
+RankingSelector<T>::RankingSelector(int init_pfrac, int init_uniform) :
+        GeneticSelector<T>(init_pfrac), uniform_thresh(init_uniform) {
 }
 
-template<template<typename IT> class I, typename T>
-Population<I, T> RankingSelector<I, T>::select_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int popul_size = in_popul.get_popul_size();
+template<typename T>
+Population<T> RankingSelector<T>::select_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int popul_size = in_popul.get_size();
     int needed_size = in_popul * this->popul_frac;
-    Vec<float> probabilities(popul_size);
+    Vec<float> probs(popul_size);
 
     for (int i = 0; i < popul_size; i++)
-        probabilities[i] = in_popul.ind_vec[i].get_score();
-    Vec<int> indices = probabilities.sort_indices();
+        probs[i] = in_popul.ind_vec[i].get_score();
+    Vec<int> indices = probs.sort_indices();
 
     if (uniform_thresh > 1) {
         float val = 1.0/uniform_thresh;
         for (int i = 0; i < popul_size; i++)
-            probabilities[i] = (popul_size-indices[i] <= uniform_thresh) ? val : 0;
+            probs[i] = (popul_size-indices[i] <= uniform_thresh) ? val : 0;
     } else {
         float divisor = popul_size*(popul_size+1)/2.0;
         for (int i = 0; i < popul_size; i++)
-            probabilities[i] = (popul_size-indices[i])/divisor;
+            probs[i] = (popul_size-indices[i])/divisor;
     }
 
     for (int i = 0; i < needed_size; i++)
-        if (!out_popul.add_individual(in_popul[rand_r(time(0)) % popul_size]))
+        if (!out_popul.add_chromo(in_popul[rand_r(time(0)) % popul_size]))
             i--;
     return out_popul;
 }
 
 
-template<template<typename IT> class I, typename T>
-Population<I, T> SigmaTruncSelector<I, T>::select_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int popul_size = in_popul.get_popul_size();
+template<typename T>
+Population<T> SigmaTruncSelector<T>::select_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int popul_size = in_popul.get_size();
     int needed_size = in_popul * this->popul_frac;
-    Vec<float> probabilities(popul_size);
+    Vec<float> probs(popul_size);
 
     for (int i = 0; i < popul_size; i++)
-        probabilities[i] = in_popul.ind_vec[i].get_score();
-    Vec<int> indices = probabilities.sort_indices();
+        probs[i] = in_popul.ind_vec[i].get_score();
+    Vec<int> indices = probs.sort_indices();
 
     for (int i = 0; i < popul_size; i++)
         if (popul_size-indices[i] <= needed_size)
-            out_popul.add_individual(in_popul[i]);
+            out_popul.add_chromo(in_popul[i]);
     return out_popul;
 }
 
 
-template<template<typename IT> class I, typename T>
-Population<I, T> PanmixiaBreeder<I, T>::breed_new_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int in_popul_size = in_popul.get_popul_size();
+template<typename T>
+GeneticBreeder<T>::GeneticBreeder(int init_pnum, CrossoverType init_ctype, float init_cparam):
+        popul_num(init_pnum), cross_type(init_ctype), cross_param(init_cparam) {
+}
+
+template<typename T>
+Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst,
+                                                        const Chromosome<T>& sec) {
+    int chromo_len = fst.get_size();
+    int rand_val = rand_r(time(0)) % chromo_len;
+    Vec<T> fst_child_genes(chromo_len);
+    Vec<T> sec_child_genes(chromo_len);
+    Vec< Chromosome<T> > output_vec;
+
+    int fst_score = fst.get_score();
+    int total_score = fst_score + sec.get_score();
+
+    switch (cross_type) {
+        case kOnePoint:
+            for (int i = 0; i <= rand_val; i++) {
+                fst_child_genes[i] = fst[i];
+                sec_child_genes[i] = sec[i];
+            }
+            for (int i = rand_val+1; i < chromo_len; i++) {
+                fst_child_genes[i] = sec[i];
+                sec_child_genes[i] = fst[i];
+            }
+            output_vec.append(Chromosome<T>(fst_child_genes));
+            output_vec.append(Chromosome<T>(sec_child_genes));
+            break;
+
+        case kMultiPoint:
+            for (int i = 0; i < cross_param; i++) {
+                for (int j = 0; j <= rand_val; j++) {
+                    fst_child_genes[j] = fst[j];
+                    sec_child_genes[j] = sec[j];
+                }
+                for (int j = rand_val+1; j < chromo_len; j++) {
+                    fst_child_genes[j] = sec[j];
+                    sec_child_genes[j] = fst[j];
+                }
+                output_vec.append(Chromosome<T>(fst_child_genes));
+                output_vec.append(Chromosome<T>(sec_child_genes));
+
+                rand_val = rand_r(time(0)) % chromo_len;
+            }
+            break;
+
+        case kUniform:
+            for (int i = 0; i < chromo_len; i++)
+                fst_child_genes[i] = (rand_r(time(0)) % 2) ? fst[i] : sec[i];
+            output_vec.append(Chromosome<T>(fst_child_genes));
+            break;
+
+        case kScoredUniform:
+            for (int i = 0; i < chromo_len; i++) {
+                if (rand_r(time(0)) % total_score > fst_score)
+                    fst_child_genes[i] = fst[i];
+                else
+                    fst_child_genes[i] = sec[i];
+            }
+            output_vec.append(Chromosome<T>(fst_child_genes));
+            break;
+    }
+
+    return output_vec;
+}
+
+
+template<typename T>
+PanmixiaBreeder<T>::PanmixiaBreeder(int init_pnum, CrossoverType init_ctype, float init_cparam):
+        GeneticBreeder<T>(init_pnum, init_ctype, init_cparam) {
+}
+
+template<typename T>
+Population<T> PanmixiaBreeder<T>::breed_new_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int in_popul_size = in_popul.get_size();
     if (in_popul_size <= 1)
         return in_popul;
 
-    for (int i = 0; i < this->popul_num; i++) {
-        I<T> fst_parent = in_popul[rand_r(time(0)) % in_popul_size];
-        I<T> sec_parent = in_popul[rand_r(time(0)) % in_popul_size];
+    for (int i = 0; i < this->popul_num;) {
+        Chromosome<T> fst_parent = in_popul[rand_r(time(0)) % in_popul_size];
+        Chromosome<T> sec_parent = in_popul[rand_r(time(0)) % in_popul_size];
         while (sec_parent == fst_parent)
             sec_parent = in_popul[rand_r(time(0)) % in_popul_size];
-        if (!out_popul.add_individual(fst_parent * sec_parent))
-            i--;
+        Vec< Chromosome<T> > children = apply_crossover(fst_parent, sec_parent);
+        int children_num = children.get_size();
+
+        for (int j = 0; j < children_num; j++)
+            if (out_popul.add_chromo(children[i])) {
+                i++;
+                if (i >= this->popul_num)
+                    break;
+            }
     }
     return out_popul;
 }
 
-template<template <typename IT> class I, typename T>
-InOutBreeder<I, T>::InOutBreeder(InOutBreederType init_type, int init_pnum) :
-            GeneticBreeder<I, T>(init_pnum),
-            breeder_type(init_type) {
+template<typename T>
+InOutBreeder<T>::InOutBreeder(int init_pnum, InOutBreederType init_btype,
+                              CrossoverType init_ctype, float init_cparam):
+        GeneticBreeder<T>(init_pnum, init_ctype, init_cparam), breeder_type(init_btype) {
 }
 
-template<template <typename IT> class I, typename T>
-Population<I, T> InOutBreeder<I, T>::breed_new_population(const Population<I, T>& in_popul) {
-    Population<I, T> out_popul;
-    int in_popul_size = in_popul.get_popul_size();
+template<typename T>
+Population<T> InOutBreeder<T>::breed_new_population(const Population<T>& in_popul) {
+    Population<T> out_popul;
+    int in_popul_size = in_popul.get_size();
     if (in_popul_size <= 1)
         return in_popul;
 
     for (int i = 0; i < this->popul_num; i++) {
-        I<T> fst_parent = in_popul[rand_r(time(0)) % in_popul_size];
-        I<T> sec_parent = find_match(in_popul, fst_parent);
-        if (!out_popul.add_individual(fst_parent * sec_parent))
-            i--;
+        Chromosome<T> fst_parent = in_popul[rand_r(time(0)) % in_popul_size];
+        Chromosome<T> sec_parent = find_match(in_popul, fst_parent);
+        Vec< Chromosome<T> > children = apply_crossover(fst_parent, sec_parent);
+        int children_num = children.get_size();
+
+        for (int j = 0; j < children_num; j++)
+            if (out_popul.add_chromo(children[i])) {
+                i++;
+                if (i >= this->popul_num)
+                    break;
+            }
     }
     return out_popul;
 }
 
-template<template <typename IT> class I, typename T>
-const I<T>& InOutBreeder<I, T>::find_match(const Population<I, T>& in_popul, const I<T>& suitor) {
+template<typename T>
+const Chromosome<T>& InOutBreeder<T>::find_match(const Population<T>& in_popul,
+                                                 const Chromosome<T>& suitor) {
     int in_popul_size = in_popul.get_size();
     int partner_idx = (in_popul[0] == suitor) ? 1 : 0;
     float param_diff = 0.0, curr_param_diff = 0.0;
@@ -265,11 +370,11 @@ const I<T>& InOutBreeder<I, T>::find_match(const Population<I, T>& in_popul, con
     return in_popul[partner_idx];
 }
 
-template<template <typename IT> class I, typename T>
-GeneticAlgorithm<I, T>::GeneticAlgorithm(GeneticInitiator<I, T> init_initiator, \
-                                         GeneticSelector<I, T>  init_selector, \
-                                         GeneticBreeder<I, T>   init_breeder, \
-                                         GeneticMutator<I, T>   init_mutator, \
+template<typename T>
+GeneticAlgorithm<T>::GeneticAlgorithm(GeneticInitiator<T> init_initiator, \
+                                         GeneticSelector<T>  init_selector, \
+                                         GeneticBreeder<T>   init_breeder, \
+                                         GeneticMutator<T>   init_mutator, \
                                          TerminationCriterionType init_term_crit,
                                          float init_term_crit_val) :
                 initiator(init_initiator),
@@ -280,14 +385,14 @@ GeneticAlgorithm<I, T>::GeneticAlgorithm(GeneticInitiator<I, T> init_initiator, 
                 term_crit_val(init_term_crit_val) {
 }
 
-template<template <typename IT> class I, typename T>
-Vec<T> GeneticAlgorithm<I, T>::execute_ga() {
-    Population<I, T> curr_population = initiator->get_init_population(sample_set);
+template<typename T>
+Vec<T> GeneticAlgorithm<T>::execute_ga() {
+    Population<T> curr_population = initiator->get_init_population(sample_set);
     int64_t iter_count = 0L;
 
     while (true) {
-        Population<I, T> breed_population = selector.select_population(curr_population);
-        Population<I, T> new_population = breeder.breed_new_population(breed_population);
+        Population<T> breed_population = selector.select_population(curr_population);
+        Population<T> new_population = breeder.breed_new_population(breed_population);
         new_population = mutator.mutate_population(new_population);
 
         if (check_term_crit(curr_population, new_population, iter_count))
@@ -295,9 +400,9 @@ Vec<T> GeneticAlgorithm<I, T>::execute_ga() {
     }
 }
 
-template<template <typename IT> class I, typename T>
-bool GeneticAlgorithm<I, T>::check_term_crit(Population<I, T> curr_popul, \
-                                             Population<I, T> new_popul, \
+template<typename T>
+bool GeneticAlgorithm<T>::check_term_crit(Population<T> curr_popul, \
+                                             Population<T> new_popul, \
                                              int64_t iter_cnt) {
     switch (term_crit) {
         case kPopulConverged:

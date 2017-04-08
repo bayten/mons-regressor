@@ -5,119 +5,135 @@
 #include "../include/default_types.h"
 #include "../include/SampleHandler.h"
 
+// TODO(Baytekov): Add weights!
+
 template<typename T>
-class Individual {
- protected:
-    T data;
+class Chromosome {
+    Vec<T> genes;
     float score;
 
  public:
-    explicit Individual(T init_data, float init_score = 0.0) : data(init_data), score(init_score) {}
-    ~Individual() {}
+    explicit Chromosome(Vec<T> init_genes, float init_score = 0.0);  // enes), score(init_score) {}
+    explicit Chromosome(T init_gene, float init_score = 0.0);  // : genes(1, &init_gene) {}
+    explicit Chromosome(const Chromosome<T>& chromo_obj);  // : genes(chromo_obj.get_genes()) {}
+    ~Chromosome();
 
+    int get_size() const { return genes.get_size(); }
+    const Vec<T>& get_genes() const { return genes; }
     float get_score() const { return score; }
-    T get_data() const { return data; }
     void set_score(float score_val) { score = score_val; }
 
-    virtual Individual<T> operator*(const Individual<T>& cross_obj);  // crossover op
-    virtual float operator%(const Individual<T>& geno_obj);  // genotypes comparation op
-    virtual bool operator== (const Individual<T>& comp_obj);
+    Chromosome<T>& operator=(const Chromosome<T>& chromo_obj);
+    bool operator==(const Chromosome<T>& chromo_obj);
+    T& operator[] (int idx) { return genes[idx]; }
 };
 
-template<template <typename IT> class I, typename T>
+template<typename T>
 class Population {
-    Vec< I<T> > ind_vec;
+    Vec< Chromosome<T> > chromo_vec;
 
  public:
-    explicit Population(Vec< I<T> > init_vec) : ind_vec(init_vec) {}
+    explicit Population(Vec< Chromosome<T> > init_vec) : chromo_vec(init_vec) {}
     Population() {}
     ~Population() {}
 
-    virtual bool update_costs() { return 0; }
+    virtual bool update_costs() = 0;
+    bool add_chromo(Chromosome<T> add_obj);
+    bool del_chromo(int idx);
 
-    bool add_individual(I<T> add_obj);
-    bool del_individual(int idx);
-
-    const Vec<T>& get_popul_data() const { return ind_vec; }
-    int get_popul_size() const { return ind_vec.get_size(); }
+    const Vec<T>& get_chromos() const { return chromo_vec; }
+    int get_size() const { return chromo_vec.get_size(); }
 
     float get_avg_score() const;
-    const I<T>& get_best_ind() const;
+    const Chromosome<T>& get_best_ind() const;
 
-    I<T>& operator[] (int idx) { return ind_vec[idx]; }
-    virtual Population<I, T>& operator+ (const Population<I, T>& merge_obj) { return (*this); }
+    Chromosome<T>& operator[] (int idx) { return chromo_vec[idx]; }
 };
 
 
-template<template <typename IT> class I, typename T>
+template<typename T>
 class GeneticInitiator {
     int popul_num;
 
  public:
     explicit GeneticInitiator(int init_num = 0) : popul_num(init_num) {}
     virtual ~GeneticInitiator() = 0;
-    virtual Population<I, T> get_init_population(SampleSet<T> sample_set) = 0;
+    virtual Population<T> get_init_population(SampleSet<T> sample_set) = 0;
 };
 
 
-template<template <typename IT> class I, typename T>
+template<typename T>
 class GeneticSelector {
     float popul_frac;
  public:
     explicit GeneticSelector(int init_pfrac = 0.5) : popul_frac(init_pfrac) {}
     virtual ~GeneticSelector() = 0;
-    virtual Population<I, T> select_population(const Population<I, T>& in_popul) = 0;
+    virtual Population<T> select_population(const Population<T>& in_popul) = 0;
 };
 
-template<template <typename IT> class I, typename T>
-class TournamentSelector : public GeneticSelector<I, T> {
+template<typename T>
+class TournamentSelector : public GeneticSelector<T> {
  public:
-    explicit TournamentSelector(int init_pfrac = 0.5) : GeneticSelector<I, T>(init_pfrac) {}
+    explicit TournamentSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
     virtual ~TournamentSelector();
-    virtual Population<I, T> select_population(const Population<I, T>& in_popul);
+    virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
-template<template <typename IT> class I, typename T>
-class RouletteSelector : public GeneticSelector<I, T> {
+template<typename T>
+class RouletteSelector : public GeneticSelector<T> {
  public:
-    explicit RouletteSelector(int init_pfrac = 0.5) : GeneticSelector<I, T>(init_pfrac) {}
+    explicit RouletteSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
     virtual ~RouletteSelector();
-    virtual Population<I, T> select_population(const Population<I, T>& in_popul);
+    virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
-template<template <typename IT> class I, typename T>
-class RankingSelector : public GeneticSelector<I, T> {
+template<typename T>
+class RankingSelector : public GeneticSelector<T> {
     int uniform_thresh;
  public:
     explicit RankingSelector(int init_pfrac = 0.5, int init_uniform = 0);
     virtual ~RankingSelector();
-    virtual Population<I, T> select_population(const Population<I, T>& in_popul);
+    virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
-template<template <typename IT> class I, typename T>
-class SigmaTruncSelector : public GeneticSelector<I, T> {
+template<typename T>
+class SigmaTruncSelector : public GeneticSelector<T> {
  public:
-    explicit SigmaTruncSelector(int init_pfrac = 0.5) : GeneticSelector<I, T>(init_pfrac) {}
+    explicit SigmaTruncSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
     virtual ~SigmaTruncSelector();
-    virtual Population<I, T> select_population(const Population<I, T>& in_popul);
+    virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
-
-template<template <typename IT> class I, typename T>
+enum CrossoverType {
+    kOnePoint = 0,
+    kMultiPoint = 1,
+    kUniform = 2,
+    kScoredUniform = 3
+};
+template<typename T>
 class GeneticBreeder {
     int popul_num;
+    CrossoverType cross_type;
+    float cross_param;
+
  public:
-    explicit GeneticBreeder(int init_pnum = 0) : popul_num(init_pnum) {}
+    explicit GeneticBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
+                            float init_cparam = 1.0);
     virtual ~GeneticBreeder() = 0;
-    virtual Population<I, T> breed_new_population(const Population<I, T>& in_popul) = 0;
+    virtual Population<T> breed_new_population(const Population<T>& in_popul) = 0;
+
+ protected:
+    virtual Vec< Chromosome<T> >apply_crossover(const Chromosome<T>& fst,
+                                                const Chromosome<T>& sec);
 };
 
-template<template <typename IT> class I, typename T>
-class PanmixiaBreeder : public GeneticBreeder<I, T> {
+template<typename T>
+class PanmixiaBreeder : public GeneticBreeder<T> {
  public:
-    explicit PanmixiaBreeder(int init_pnum = 0) : GeneticBreeder<I, T>(init_pnum) {}
+    explicit PanmixiaBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
+                             float init_cparam = 1.0);
     ~PanmixiaBreeder();
-    virtual Population<I, T> breed_new_population(const Population<I, T>& in_popul);
+    virtual Population<T> breed_new_population(const Population<T>& in_popul);
 };
 
 enum InOutBreederType {
@@ -126,27 +142,29 @@ enum InOutBreederType {
     kOutPhenoType = 2,
     kOutGenoType  = 3
 };
-template<template <typename IT> class I, typename T>
-class InOutBreeder : public GeneticBreeder<I, T> {
+template<typename T>
+class InOutBreeder : public GeneticBreeder<T> {
     InOutBreederType breeder_type;
 
  public:
-    explicit InOutBreeder(InOutBreederType init_type = kInPhenoType, int init_pnum = 0);
+    explicit InOutBreeder(int init_pnum = 0, InOutBreederType init_btype = kInPhenoType,
+                          CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
     ~InOutBreeder();
-    virtual Population<I, T> breed_new_population(const Population<I, T>& in_popul);
+    virtual Population<T> breed_new_population(const Population<T>& in_popul);
 
  private:
-    virtual const I<T>& find_match(const Population<I, T>& in_popul, const I<T>& suitor);
+    virtual const Chromosome<T>& find_match(const Population<T>& in_popul,
+                                            const Chromosome<T>& suitor);
 };
 
 
-template<template <typename IT> class I, typename T>
+template<typename T>
 class GeneticMutator {
     float popul_frac;
  public:
     explicit GeneticMutator(int init_pfrac = 0.0) : popul_frac(init_pfrac) {}
     virtual ~GeneticMutator() = 0;
-    virtual Population<I, T> mutate_population(Population<I, T> in_popul) = 0;
+    virtual Population<T> mutate_population(Population<T> in_popul) = 0;
 };
 
 
@@ -156,32 +174,29 @@ enum TerminationCriterionType {
     kMaxPopulNum    = 2   // term_crit_val = amount of populations
     // kMaxCompTime    = 3   // term_crit_val = amount of ticks for computation
 };
-template<template <typename IT> class I, typename T>
+template<typename T>
 class GeneticAlgorithm {
  protected:
     SampleSet<T> sample_set;
 
-    GeneticInitiator<I, T> initiator;
-    GeneticSelector<I, T> selector;
-    GeneticBreeder<I, T> breeder;
-    GeneticMutator<I, T> mutator;
+    GeneticInitiator<T> initiator;
+    GeneticSelector<T> selector;
+    GeneticBreeder<T> breeder;
+    GeneticMutator<T> mutator;
 
     TerminationCriterionType term_crit;
     float term_crit_val;
 
  public:
-    GeneticAlgorithm(GeneticInitiator<I, T> init_initiator, \
-                     GeneticSelector<I, T>  init_selector, \
-                     GeneticBreeder<I, T>   init_breeder, \
-                     GeneticMutator<I, T>   init_mutator, \
-                     TerminationCriterionType init_term_crit = kPopulConverged,
-                     float init_term_crit_val = 1.0);
+    GeneticAlgorithm(GeneticInitiator<T> init_initiator, GeneticSelector<T> init_selector,
+                     GeneticBreeder<T> init_breeder, GeneticMutator<T> init_mutator,
+                     TerminationCriterionType init_tcrit = kPopulConverged,
+                     float init_tcrit_val = 1.0);
     virtual ~GeneticAlgorithm();
 
     virtual void set_sample_set(SampleSet<T> init_set) { sample_set = init_set; }
     virtual Vec<T> execute_ga();
-    virtual bool check_term_crit(Population<I, T> curr_popul, \
-                                 Population<I, T> new_popul, \
+    virtual bool check_term_crit(Population<T> curr_popul, Population<T> new_popul,
                                  int64_t iter_cnt);
 };
 

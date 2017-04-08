@@ -15,12 +15,12 @@ class Vec {
  public:
     explicit Vec(int size = 0);  // default constructor
     Vec(int size, T init_vals[]);  // -//-
-    explicit Vec(const Vec& vec_obj);  // copy constructor
-    explicit Vec(Vec&& vec_obj);  // move constructor
+    explicit Vec(const Vec<T>& vec_obj);  // copy constructor
+    explicit Vec(Vec<T>&& vec_obj);  // move constructor
     ~Vec();  // destructor
 
-    Vec& operator=(const Vec& vec_obj);  // copy assignment
-    Vec& operator=(Vec&& vec_obj);  // move assignment
+    Vec<T>& operator=(const Vec<T>& vec_obj);  // copy assignment
+    Vec<T>& operator=(Vec<T>&& vec_obj);  // move assignment
     T & operator[](int index);
 
     void append(T apnd_obj, int index = -1);
@@ -55,8 +55,8 @@ Vec<T>::Vec(int size, T init_vals[]) {
     }
 }
 
-template<class T>
-Vec<T>::Vec(const Vec & vec_obj) {
+template<typename T>
+Vec<T>::Vec(const Vec<T>& vec_obj) {
     sz = vec_obj.sz;
 
     data = new T[sz];
@@ -65,20 +65,20 @@ Vec<T>::Vec(const Vec & vec_obj) {
     }
 }
 
-template<class T>
-Vec<T>::Vec(Vec&& vec_obj) {
+template<typename T>
+Vec<T>::Vec(Vec<T>&& vec_obj) {
     sz = vec_obj.sz;
     data = vec_obj.data;
     vec_obj.data = nullptr;
 }
 
-template<class T>
+template<typename T>
 Vec<T>::~Vec() {
     if (data != nullptr)
         delete [] data;
 }
 
-template<class T>
+template<typename T>
 Vec<T>& Vec<T>::operator=(const Vec<T>& vec_obj) {
     if (this == &vec_obj)  // assigning to myself
         return *this;
@@ -97,7 +97,7 @@ Vec<T>& Vec<T>::operator=(const Vec<T>& vec_obj) {
     return *this;
 }
 
-template<class T>
+template<typename T>
 Vec<T>& Vec<T>::operator=(Vec<T>&& vec_obj) {
     T* tmp_data = data;
     sz = vec_obj.sz;
@@ -107,7 +107,7 @@ Vec<T>& Vec<T>::operator=(Vec<T>&& vec_obj) {
     tmp_data = nullptr;
 }
 
-template<class T>
+template<typename T>
 T& Vec<T>::operator[](int index) {
     if (index == -1) {
         return data[sz-1];
@@ -118,7 +118,7 @@ T& Vec<T>::operator[](int index) {
     return data[index];
 }
 
-template<class T>
+template<typename T>
 void Vec<T>::append(T apnd_obj, int index) {
     if (data == nullptr) {
         data = new T[1];
@@ -147,7 +147,7 @@ void Vec<T>::append(T apnd_obj, int index) {
     sz++;
 }
 
-template<class T>
+template<typename T>
 bool Vec<T>::erase(int index) {
     if (data == nullptr || (index < 0 && index != -1) || index >= sz)
         return 0;
@@ -169,7 +169,7 @@ bool Vec<T>::erase(int index) {
     old_data = nullptr;
 }
 
-template<class T>
+template<typename T>
 Vec<T> Vec<T>::cutslice(int begin, int end) const {
     T* old_data = data;
     int slice_sz = end+1-begin;
@@ -188,7 +188,7 @@ Vec<T> Vec<T>::cutslice(int begin, int end) const {
     return carved_slice;
 }
 
-template<class T>
+template<typename T>
 Vec<T> Vec<T>::sort() const {
     T* new_data = new T[sz];
     for (int i = 0; i < sz; i++)
@@ -198,7 +198,7 @@ Vec<T> Vec<T>::sort() const {
     return Vec<T>(sz, new_data);
 }
 
-template<class T>
+template<typename T>
 Vec<int> Vec<T>::sort_indices() const {
     std::vector<int>idx(sz);
     std::iota(std::begin(idx), std::end(idx), 0);
@@ -208,7 +208,7 @@ Vec<int> Vec<T>::sort_indices() const {
 }
 
 
-template<class T>
+template<typename T>
 class Mat {
  private:
     Vec< Vec<T> > data;

@@ -7,47 +7,19 @@
 #ifndef INCLUDE_GENETICDUALIZER_H_
 #define INCLUDE_GENETICDUALIZER_H_
 
-template<typename T>
-class CoveringInd : public Individual < ElColl<T> > {
- public:
-    explicit CoveringInd(ElColl<T> init_coll) : Individual< ElColl<T> >(init_coll) {}
-    ~CoveringInd() {}
-
-    float get_quality(const SampleSet<T>& basic, \
-                      const SampleSet<T>& valid, \
-                      int target_tag);
-
-    virtual Individual< ElColl<T> > operator*(const Individual<ElColl<T> >& cross_obj);
-    virtual float operator%(const Individual<ElColl<T> >& geno_obj);
-    virtual bool operator== (const Individual<T>& comp_obj);
-};
-
-
-template<typename T>
-class CoveringPopul : public Population<CoveringInd, T> {
- public:
-    explicit CoveringPopul(Vec< CoveringInd<T> > init_vec);
-    CoveringPopul() {}
-    ~CoveringPopul() {}
-
-    virtual bool update_costs();
-    virtual Population<CoveringInd, T>& operator+ (const Population<CoveringInd, T>& merge_obj);
-};
-
-
 enum CoveringFormType {
     kBinForm = 0,
     kIntForm = 1
 };
 template<typename T>
-class GenDualInitiator : public GeneticInitiator<CoveringInd, T> {
+class GenDualInitiator : public GeneticInitiator<T> {
     CoveringFormType covering_form;
 
  public:
     explicit GenDualInitiator(int init_num = 0, CoveringFormType init_form = kIntForm);
     ~GenDualInitiator() {}
 
-    Population<CoveringInd, T> get_init_population(SampleSet<T> sample_set);
+    Population<T> get_init_population(SampleSet<T> sample_set);
 
     // private:
     // build_covering();
@@ -56,15 +28,15 @@ class GenDualInitiator : public GeneticInitiator<CoveringInd, T> {
 };
 
 template<typename T>
-class GenDualMutator : public GeneticMutator<CoveringInd, T> {
+class GenDualMutator : public GeneticMutator<T> {
  public:
     GenDualMutator();
     virtual ~GenDualMutator() = 0;
-    virtual Population<CoveringInd, T> mutate_population(Population<CoveringInd, T> in_popul);
+    virtual Population<T> mutate_population(Population<T> in_popul);
 };
 
 template<class T>
-class GeneticDualizer : public GeneticAlgorithm<CoveringInd, T> {
+class GeneticDualizer : public GeneticAlgorithm<T> {
  private:
     SampleSet<T> basic;
     SampleSet<T> valid;
