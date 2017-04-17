@@ -3,36 +3,31 @@
 #include "SampleHandler.cpp"
 #include "LBBuilder.cpp"
 
-template<class T>
+template<typename S, typename T>
 class MONSClassifier {
-    Vec< CollFamily<T> > Wsets;  // This is where all families of correctors are stored =)
+    Vec< CollFamily<T> > coll_sets;
     SampleHandler<T> sample_handler;
     LBBuilder<T> lb_builder;
-    GeneticDualizer<T> genetic_dualizer;
+    GeneticDualizer<S, T> genetic_dualizer;
+
     int max_iter;
     float eps;
 
  public:
-    explicit MONSClassifier(int max_i = 1000, float epsilon = 0.0001):
-            max_iter(max_i), eps(epsilon) {
-    }
+    explicit MONSClassifier(int max_i = 1000, float epsilon = 0.0001);
+    ~MONSClassifier() {}
 
-    ~MONSClassifier() {
-    }
-
-    void fit(const Mat<T> & X, const Vec<int> & y);
+    void fit(const Mat<T>& X, const Vec<int>& y);
     Vec<int> predict(const Mat<T> & X);
 
  private:
-    Vec< CollFamily<T> > & GeneticAlgorithm(const Mat<T> & Train, int class_tag, \
-                                            const ElColl<T> & LB);
-    bool CheckMargin(const Mat<T> & Valid);
+    bool check_margin();
 };
 
-template<class T>
-void MONSClassifier<T>::fit(const Mat<T>& X, const Vec<int>& y) {
-    // Mat<T> Train, Valid;
-    // int class_num = GetTrainAndValidSets(X, Train, Valid);
+template<typename S, typename T>
+void MONSClassifier<S, T>::fit(const Mat<T>& X, const Vec<int>& y) {
+    // Mat<T> train, valid;
+    // int class_num = sampleGetTrainAndValidSets(X, Train, Valid);
     //
     // for (int i = 0; i < max_iter; i++) {
     //     for (int k = 0; k < class_num; k++) {

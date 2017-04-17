@@ -13,9 +13,9 @@ class Chromosome {
     float score;
 
  public:
-    explicit Chromosome(Vec<T> init_genes, float init_score = 0.0);  // enes), score(init_score) {}
-    explicit Chromosome(T init_gene, float init_score = 0.0);  // : genes(1, &init_gene) {}
-    explicit Chromosome(const Chromosome<T>& chromo_obj);  // : genes(chromo_obj.get_genes()) {}
+    explicit Chromosome(Vec<T> init_genes, float init_score = 0.0);
+    explicit Chromosome(T init_gene, float init_score = 0.0);
+    explicit Chromosome(const Chromosome<T>& chromo_obj);
     ~Chromosome();
 
     int get_size() const { return genes.get_size(); }
@@ -37,11 +37,11 @@ class Population {
     Population() {}
     ~Population() {}
 
-    virtual bool update_costs() = 0;
     bool add_chromo(Chromosome<T> add_obj);
     bool del_chromo(int idx);
 
-    const Vec<T>& get_chromos() const { return chromo_vec; }
+    const Vec< Chromosome<T> >& get_chromos() const { return chromo_vec; }
+    Vec< Vec<T> > get_popul_data() const;
     int get_size() const { return chromo_vec.get_size(); }
 
     float get_avg_score() const;
@@ -51,14 +51,14 @@ class Population {
 };
 
 
-template<typename T>
+template<typename S, typename T>
 class GeneticInitiator {
     int popul_num;
 
  public:
     explicit GeneticInitiator(int init_num = 0) : popul_num(init_num) {}
     virtual ~GeneticInitiator() = 0;
-    virtual Population<T> get_init_population(SampleSet<T> sample_set) = 0;
+    virtual Population<T> get_init_population(const SampleSet<S>& sample_set) = 0;
 };
 
 
@@ -155,6 +155,7 @@ class InOutBreeder : public GeneticBreeder<T> {
  private:
     virtual const Chromosome<T>& find_match(const Population<T>& in_popul,
                                             const Chromosome<T>& suitor);
+    float find_geno_diff(const Chromosome<T>& fst, const Chromosome<T>& sec);
 };
 
 
@@ -164,7 +165,7 @@ class GeneticMutator {
  public:
     explicit GeneticMutator(int init_pfrac = 0.0) : popul_frac(init_pfrac) {}
     virtual ~GeneticMutator() = 0;
-    virtual Population<T> mutate_population(Population<T> in_popul) = 0;
+    virtual Population<T> mutate_population(const Population<T>& in_popul) = 0;
 };
 
 
@@ -172,14 +173,13 @@ enum TerminationCriterionType {
     kPopulConverged = 0,  // term_crit_val = min delta between two populations
     kBestConverged  = 1,  // term_crit_val = min delta between two fitnesses of best individual
     kMaxPopulNum    = 2   // term_crit_val = amount of populations
-    // kMaxCompTime    = 3   // term_crit_val = amount of ticks for computation
 };
-template<typename T>
+template<typename S, typename T>
 class GeneticAlgorithm {
  protected:
-    SampleSet<T> sample_set;
+    SampleSet<S> sample_set;
 
-    GeneticInitiator<T> initiator;
+    GeneticInitiator<S, T> initiator;
     GeneticSelector<T> selector;
     GeneticBreeder<T> breeder;
     GeneticMutator<T> mutator;
@@ -188,16 +188,17 @@ class GeneticAlgorithm {
     float term_crit_val;
 
  public:
-    GeneticAlgorithm(GeneticInitiator<T> init_initiator, GeneticSelector<T> init_selector,
+    GeneticAlgorithm(GeneticInitiator<S, T> init_initiator, GeneticSelector<T> init_selector,
                      GeneticBreeder<T> init_breeder, GeneticMutator<T> init_mutator,
                      TerminationCriterionType init_tcrit = kPopulConverged,
                      float init_tcrit_val = 1.0);
     virtual ~GeneticAlgorithm();
 
-    virtual void set_sample_set(SampleSet<T> init_set) { sample_set = init_set; }
-    virtual Vec<T> execute_ga();
+    virtual Vec< Vec<T> > execute_ga();
     virtual bool check_term_crit(Population<T> curr_popul, Population<T> new_popul,
                                  int64_t iter_cnt);
-};
 
+     virtual void set_sample_set(SampleSet<T> init_set) { sample_set = init_set; }
+     virtual void update_costs(Population<T>* in_popul) = 0;
+};
 #endif  // INCLUDE_GENETICALGORITHM_H_

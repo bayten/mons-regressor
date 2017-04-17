@@ -11,11 +11,12 @@ SampleHandler<T>::~SampleHandler() {
 }
 
 template<class T>
-SampleSet<T> SampleHandler<T>::make_samples(const Mat<T>& X, const Vec<int>& y) {
+SampleSet<T> SampleHandler<T>::make_samples(const Mat<T>& X, const Vec<int>& y, bool mix) {
     SampleSet<T> sample_set;
 
     sample_set.append(X, y);
-    sample_set.shuffle();
+    if (mix)
+        sample_set.shuffle();
 
     return sample_set;
 }

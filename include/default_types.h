@@ -21,7 +21,8 @@ class Vec {
 
     Vec<T>& operator=(const Vec<T>& vec_obj);  // copy assignment
     Vec<T>& operator=(Vec<T>&& vec_obj);  // move assignment
-    T & operator[](int index);
+    T& operator[](int index);
+    const T& operator[](int index) const;
 
     void append(T apnd_obj, int index = -1);
     bool erase(int index = -1);
@@ -32,6 +33,29 @@ class Vec {
         return sz;
     }
 };
+
+
+template<typename T>
+class Mat {
+ private:
+    Vec< Vec<T> > data;
+    int sx, sy;
+
+ public:
+    explicit Mat(int x = 0, int y = 0);
+    Mat(int x, int y, T *init_vals[]);
+    explicit Mat(const Mat<T>& mat_obj);
+    explicit Mat(const Vec<T> & vec_obj);
+    ~Mat() {}
+
+    Mat<T>& operator=(const Mat<T> & mat_obj);
+    Vec<T>& operator[](int index);
+    const Vec<T>& operator[](int index) const;
+
+    int get_sx() const { return sx; }
+    int get_sy() const { return sy; }
+};
+
 
 template<typename T>
 Vec<T>::Vec(int size) {
@@ -109,6 +133,17 @@ Vec<T>& Vec<T>::operator=(Vec<T>&& vec_obj) {
 
 template<typename T>
 T& Vec<T>::operator[](int index) {
+    if (index == -1) {
+        return data[sz-1];
+    } else if (index > sz) {
+        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        return data[0];
+    }
+    return data[index];
+}
+
+template<typename T>
+const T& Vec<T>::operator[](int index) const {
     if (index == -1) {
         return data[sz-1];
     } else if (index > sz) {
@@ -209,78 +244,76 @@ Vec<int> Vec<T>::sort_indices() const {
 
 
 template<typename T>
-class Mat {
- private:
-    Vec< Vec<T> > data;
-    int sx, sy;
-
- public:
-    explicit Mat(int x = 0, int y = 0) : data(x), sx(x), sy(y) {
-        for (int i = 0; i < sx; i++) {
-            data[i] = Vec<T>(sy);
-        }
+Mat<T>::Mat(int x, int y) : data(x), sx(x), sy(y) {
+    for (int i = 0; i < sx; i++) {
+        data[i] = Vec<T>(sy);
     }
+}
 
-    Mat(int x, int y, T *init_vals[]) : data(x), sx(x), sy(y) {
-        for (int i = 0; i < sx; i++) {
-            data[i] = Vec<T>(sy);
-            for (int j = 0; j < sy; j++)
-                data[i][j] = init_vals[i][j];
-        }
+template<typename T>
+Mat<T>::Mat(int x, int y, T *init_vals[]) : data(x), sx(x), sy(y) {
+    for (int i = 0; i < sx; i++) {
+        data[i] = Vec<T>(sy);
+        for (int j = 0; j < sy; j++)
+            data[i][j] = init_vals[i][j];
     }
+}
 
-    explicit Mat(const Mat<T>& mat_obj) : data(Vec< Vec<T> >(mat_obj.sx)) {
-        sx = mat_obj.sx;
-        sy = mat_obj.sy;
+template<typename T>
+Mat<T>::Mat(const Mat<T>& mat_obj) : data(Vec< Vec<T> >(mat_obj.sx)) {
+    sx = mat_obj.sx;
+    sy = mat_obj.sy;
 
-        for (int i = 0; i < sx; i++) {
-            data[i] = mat_obj[i];
-        }
+    for (int i = 0; i < sx; i++) {
+        data[i] = mat_obj[i];
     }
+}
 
-    explicit Mat(const Vec<T> & vec_obj) : data(Vec< Vec<T> >(1)) {
-        sx = 1;
-        sy = vec_obj.sz;
+template<typename T>
+Mat<T>::Mat(const Vec<T> & vec_obj) : data(Vec< Vec<T> >(1)) {
+    sx = 1;
+    sy = vec_obj.sz;
 
-        data[0] = vec_obj;
-    }
+    data[0] = vec_obj;
+}
 
-    ~Mat() {
-    }
-
-    Mat<T> & operator=(const Mat<T> & mat_obj) {
-        if (this == &mat_obj)  // assigning to myself
-            return *this;
-
-        data = Vec< Vec<T> >(mat_obj.sx);
-
-        sx = mat_obj.sx;
-        sy = mat_obj.sy;
-
-        for (int i = 0; i < sx; i++) {
-            data[i] = mat_obj[i];
-        }
-
+template<typename T>
+Mat<T>& Mat<T>::operator=(const Mat<T> & mat_obj) {
+    if (this == &mat_obj)  // assigning to myself
         return *this;
+
+    data = Vec< Vec<T> >(mat_obj.sx);
+
+    sx = mat_obj.sx;
+    sy = mat_obj.sy;
+
+    for (int i = 0; i < sx; i++) {
+        data[i] = mat_obj[i];
     }
 
-    Vec<T> & operator[](int index) {
-        if (index == -1) {
-            return data[sx-1];
-        } else if (index > sx) {
-            std::cout << "ERROR: Index out of bounds!" << std::endl;
-            return data[0];
-        }
-        return data[index];
-    }
+    return *this;
+}
 
-    int get_sx() const {
-        return sx;
+template<typename T>
+Vec<T>& Mat<T>::operator[](int index) {
+    if (index == -1) {
+        return data[sx-1];
+    } else if (index > sx) {
+        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        return data[0];
     }
+    return data[index];
+}
 
-    int get_sy() const {
-        return sy;
+template<typename T>
+const Vec<T>& Mat<T>::operator[](int index) const {
+    if (index == -1) {
+        return data[sx-1];
+    } else if (index > sx) {
+        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        return data[0];
     }
-};
+    return data[index];
+}
 
 #endif  // INCLUDE_DEFAULT_TYPES_H_

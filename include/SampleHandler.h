@@ -11,7 +11,7 @@ class SampleHandler {
     SampleHandler();
     ~SampleHandler();
 
-    SampleSet<T> make_samples(const Mat<T>& X, const Vec<int>& y);
+    SampleSet<T> make_samples(const Mat<T>& X, const Vec<int>& y, bool mix = true);
     int make_train_and_valid(const SampleSet<T>& sample_set, \
                              SampleSet<T>* train, \
                              SampleSet<T>* valid);

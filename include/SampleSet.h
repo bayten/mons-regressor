@@ -47,6 +47,8 @@ class SampleSet {
     int get_total_size() const { return total_size; }
     Vec< ClassSamples<T> >& get_samples() { return samples; }
     ClassSamples<T>& get_class(int index_tag);
+    SampleSet<T> get_anticlass(int index_tag);
+    bool delete_class(int index_tag);
 
     SampleSet<T>& operator= (const SampleSet<T>& copy_obj);  // copy assignment
     SampleSet<T>& operator= (SampleSet<T>&& copy_obj);  // move assignment

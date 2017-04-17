@@ -2,7 +2,7 @@
 
 #include "../include/SampleSet.h"
 
-template<class T>
+template<typename T>
 void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
     std::random_shuffle(&(objs[0]), &(objs[-1]));
     *torn_x = objs.cutslice(0, tear_num);
@@ -11,7 +11,7 @@ void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
         (*torn_y)[j] = class_tag;
 }
 
-template<class T>
+template<typename T>
 SampleSet<T>::SampleSet(Vec< ClassSamples<T> > init_samples) :
         samples(init_samples), total_size(0) {
     int class_num = samples.get_size();
@@ -19,7 +19,7 @@ SampleSet<T>::SampleSet(Vec< ClassSamples<T> > init_samples) :
         total_size += samples[i].get_size();
 }
 
-template<class T>
+template<typename T>
 void SampleSet<T>::append(Mat<T> X, Vec<int> y) {
     int obj_num = y.get_size();
     int samples_size = samples.get_size();
@@ -46,7 +46,7 @@ void SampleSet<T>::append(Mat<T> X, Vec<int> y) {
     }
 }
 
-template<class T>
+template<typename T>
 void SampleSet<T>::shuffle() {
     int samples_size = samples.get_size();
     for (int i = 0; i < samples_size; i++) {
@@ -54,7 +54,7 @@ void SampleSet<T>::shuffle() {
     }
 }
 
-template<class T>
+template<typename T>
 ClassSamples<T>& SampleSet<T>::get_class(int index_tag) {
     int samples_size = samples.get_size();
     for (int i = 0; i < samples_size; i++)
@@ -64,7 +64,26 @@ ClassSamples<T>& SampleSet<T>::get_class(int index_tag) {
     return samples[0];
 }
 
-template<class T>
+template<typename T>
+SampleSet<T> SampleSet<T>::get_anticlass(int index_tag) {
+    SampleSet<T> new_sample_set = *this;
+    new_sample_set.delete_class(index_tag);
+    return new_sample_set;
+}
+
+template<typename T>
+bool SampleSet<T>::delete_class(int index_tag) {
+    int samples_size = samples.get_size();
+    for (int i = 0; i < samples_size; i++) {
+        if (samples[i].class_tag == index_tag) {
+            samples.erase(i);
+            return;
+        }
+    }
+    return;
+}
+
+template<typename T>
 Vec<T>& SampleSet<T>::operator[](int abs_index) {
     int samples_num = samples.get_size();
     for (int i = 0; i < samples_num; i++) {

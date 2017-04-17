@@ -2,53 +2,69 @@
 #include "../include/default_types.h"
 #include "../include/CollFamily.h"
 #include "../include/SampleHandler.h"
+#include "../include/CoveringHandler.h"
 #include "../include/GeneticAlgorithm.h"
 
 #ifndef INCLUDE_GENETICDUALIZER_H_
 #define INCLUDE_GENETICDUALIZER_H_
 
-enum CoveringFormType {
-    kBinForm = 0,
-    kIntForm = 1
-};
-template<typename T>
-class GenDualInitiator : public GeneticInitiator<T> {
-    CoveringFormType covering_form;
+template<typename S, typename T>
+class GeneticDualizer;
 
+template<typename S, typename T>
+class GenDualInitiator : public GeneticInitiator<S, T> {
+    GeneticDualizer<S, T>* my_parent;
+    CoveringHandler<T> covering_handler;
  public:
-    explicit GenDualInitiator(int init_num = 0, CoveringFormType init_form = kIntForm);
+    explicit GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
+                              int init_num = 0);
     ~GenDualInitiator() {}
 
-    Population<T> get_init_population(SampleSet<T> sample_set);
-
-    // private:
-    // build_covering();
-    // make_covering_deadend();
-    // get_covering_form();
+    Population<T> get_init_population(const SampleSet<S>& sample_set);
 };
 
-template<typename T>
+template<typename S, typename T>
 class GenDualMutator : public GeneticMutator<T> {
+    GeneticDualizer<S, T>* my_parent;
+    CoveringHandler<T> covering_handler;
+    float mutation_rate;
+    int64_t curr_iter;
  public:
-    GenDualMutator();
-    virtual ~GenDualMutator() = 0;
-    virtual Population<T> mutate_population(Population<T> in_popul);
+    explicit GenDualMutator(GeneticDualizer<S, T>* init_parent_ptr,
+                            float init_pfrac = 0.0,
+                            float init_mrate = 0.2);
+    ~GenDualMutator() {}
+    virtual Population<T> mutate_population(const Population<T>& in_popul);
+ private:
+    Population<T> recover_admissibility(const Population<T>& in_popul);
 };
 
-template<class T>
-class GeneticDualizer : public GeneticAlgorithm<T> {
- private:
-    SampleSet<T> basic;
-    SampleSet<T> valid;
+
+template<typename S, typename T>
+class GeneticDualizer : public GeneticAlgorithm<S, T> {
+    SampleHandler<S> sample_handler;
+    ElColl<S> local_basis;
+    SampleSet<S> basic;
+    SampleSet<S> valid;
     int target_tag;
 
- public:
-    GeneticDualizer(TerminationCriterionType init_term_crit = kPopulConverged,
-                    float init_term_crit_val = 1.0);
-    ~GeneticDualizer();
+    Mat<bool> gen_matrix;
 
-    virtual void set_sample_set(SampleSet<T> init_set);
-    void set_target_tag(int init_target_tag) { target_tag = init_target_tag; }
+ public:
+    explicit GeneticDualizer(int popul_size, float sel_frac, float max_mut,
+                             float mut_frac, TerminationCriterionType init_tcrit = kPopulConverged,
+                             float init_tcrit_val = 1.0);
+    ~GeneticDualizer() {}
+
+    void set_init_data(const SampleSet<S>& init_set,
+                       const ElColl<S>& init_lb,
+                       int init_target_tag);
+    Vec<ElColl<S> > decode_collections(Vec< Vec<T> > in_code);
+    virtual void update_costs(Population<T>* in_popul);
+
+ private:
+    float get_quality(const Chromosome<T>& chromo);
+    const Mat<bool>& get_gen_matrix() const { return gen_matrix; }
 };
 
 #endif  // INCLUDE_GENETICDUALIZER_H_

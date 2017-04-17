@@ -33,7 +33,6 @@ struct ElColl {
     bool add(ElClass<T> ec_obj);  // checks for similar elementary classifiers
 
     Vec<bool> apply_to_object(const Vec<T>& object);
-    int corr_func(const Vec<T>& fst_obj, const Vec<T>& sec_obj);
 };
 
 

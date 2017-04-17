@@ -69,13 +69,3 @@ Vec<bool> ElColl<T>::apply_to_object(const Vec<T>& object) {
 
     return bin_coll;
 }
-
-template<class T>
-int ElColl<T>::corr_func(const Vec<T>& fst_obj, const Vec<T>& sec_obj) {
-    int ec_num = ecs.get_size();
-
-    for (int i = 0; i < ec_num; i++)
-        if (ecs[i].apply_to_object(fst_obj) < ecs[i].apply_to_object(sec_obj))
-            return 0;
-    return 1;
-}

@@ -79,6 +79,16 @@ const Chromosome<T>& Population<T>::get_best_ind() const {
     return chromo_vec[idx];
 }
 
+template<typename T>
+Vec< Vec<T> > Population<T>::get_popul_data() const {
+    int chromo_len = chromo_vec.get_size();
+    Vec< Vec<T> > out_vec(chromo_len);
+
+    for (int i = 0; i < chromo_len; i++)
+        out_vec[i] = chromo_vec[i].get_genes();
+    return out_vec;
+}
+
 
 template<typename T>
 Population<T> TournamentSelector<T>::select_population(const Population<T>& in_popul) {
@@ -335,7 +345,7 @@ const Chromosome<T>& InOutBreeder<T>::find_match(const Population<T>& in_popul,
             break;
 
         case kInGenoType:
-            param_diff = in_popul[partner_idx] % suitor;
+            param_diff = find_geno_diff(in_popul[partner_idx], suitor);
             for (int i = (partner_idx+1); i < in_popul_size; i++) {
                 curr_param_diff = in_popul[i] % suitor;
                 if (curr_param_diff < param_diff && !(in_popul[i] == suitor)) {
@@ -357,7 +367,7 @@ const Chromosome<T>& InOutBreeder<T>::find_match(const Population<T>& in_popul,
             break;
 
         case kOutGenoType:
-            param_diff = in_popul[partner_idx] % suitor;
+            param_diff = find_geno_diff(in_popul[partner_idx], suitor);
             for (int i = (partner_idx+1); i < in_popul_size; i++) {
                 curr_param_diff = in_popul[i] % suitor;
                 if (curr_param_diff > param_diff && !(in_popul[i] == suitor)) {
@@ -371,7 +381,16 @@ const Chromosome<T>& InOutBreeder<T>::find_match(const Population<T>& in_popul,
 }
 
 template<typename T>
-GeneticAlgorithm<T>::GeneticAlgorithm(GeneticInitiator<T> init_initiator, \
+float InOutBreeder<T>::find_geno_diff(const Chromosome<T>& fst, const Chromosome<T>& sec) {
+    int chromo_len = fst.get_size();
+    float sum = 0.0;
+    for (int i = 0; i < chromo_len; i++)
+        sum += (fst[i]-sec[i])*(fst[i]-sec[i]);
+    return sqrt(sum);
+}
+
+template<typename S, typename T>
+GeneticAlgorithm<S, T>::GeneticAlgorithm(GeneticInitiator<S, T> init_initiator, \
                                          GeneticSelector<T>  init_selector, \
                                          GeneticBreeder<T>   init_breeder, \
                                          GeneticMutator<T>   init_mutator, \
@@ -385,23 +404,27 @@ GeneticAlgorithm<T>::GeneticAlgorithm(GeneticInitiator<T> init_initiator, \
                 term_crit_val(init_term_crit_val) {
 }
 
-template<typename T>
-Vec<T> GeneticAlgorithm<T>::execute_ga() {
+template<typename S, typename T>
+Vec< Vec<T> > GeneticAlgorithm<S, T>::execute_ga() {
     Population<T> curr_population = initiator->get_init_population(sample_set);
     int64_t iter_count = 0L;
 
     while (true) {
+        curr_population.update_costs();
+
         Population<T> breed_population = selector.select_population(curr_population);
         Population<T> new_population = breeder.breed_new_population(breed_population);
+
         new_population = mutator.mutate_population(new_population);
+        new_population.update_costs();
 
         if (check_term_crit(curr_population, new_population, iter_count))
-            return new_population.get_popul_data;
+            return new_population.get_popul_data();
     }
 }
 
-template<typename T>
-bool GeneticAlgorithm<T>::check_term_crit(Population<T> curr_popul, \
+template<typename S, typename T>
+bool GeneticAlgorithm<S, T>::check_term_crit(Population<T> curr_popul, \
                                              Population<T> new_popul, \
                                              int64_t iter_cnt) {
     switch (term_crit) {
