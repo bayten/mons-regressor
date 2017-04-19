@@ -8,7 +8,7 @@
 #define INCLUDE_LBBUILDER_H_
 
 // Abstract class for future realisations of BOOSTLO and TREELO
-template<class T>
+template<typename T>
 class LBBuilder {
  public:
     LBBuilder();
@@ -17,7 +17,7 @@ class LBBuilder {
 };
 
 
-template<class T>
+template<typename T>
 class RandomLBBuilder : public LBBuilder<T> {
  public:
     RandomLBBuilder();

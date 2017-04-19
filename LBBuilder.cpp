@@ -3,15 +3,15 @@
 #include <vector>
 #include <algorithm>
 
-template<class T>
+template<typename T>
 RandomLBBuilder<T>::RandomLBBuilder() {
 }
 
-template<class T>
+template<typename T>
 RandomLBBuilder<T>::~RandomLBBuilder() {
 }
 
-template<class T>
+template<typename T>
 ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T>& train, int class_tag) {
     int total_num = train.get_total_size();
     int limit = static_cast<int>(2 * log(total_num) + 3);
@@ -26,7 +26,7 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T>& train, int class_tag)
     return local_basis;
 }
 
-template<class T>
+template<typename T>
 ElClass<T> RandomLBBuilder<T>::get_elclass(const Vec<T>& rand_obj) {
     int num_of_features = rand_obj.get_size();
     int chosen_features = rand_r(time(0)) % num_of_features;
