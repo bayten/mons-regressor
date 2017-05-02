@@ -1,14 +1,22 @@
 /* Copyright 2017 Baytekov Nikita */
-
-#include "./include/SampleHandler.h"
+#include "../include/default_types.h"
+#include "../include/CollFamily.h"
+#include "../include/SampleSet.h"
+#ifndef INCLUDE_SAMPLEHANDLER_H_
+#define INCLUDE_SAMPLEHANDLER_H_
 
 template<class T>
-SampleHandler<T>::SampleHandler() {
-}
+class SampleHandler {
+ public:
+    SampleHandler() {}
+    ~SampleHandler() {}
 
-template<class T>
-SampleHandler<T>::~SampleHandler() {
-}
+    SampleSet<T> make_samples(const Mat<T>& X, const Vec<int>& y, bool mix = true);
+    int make_train_and_valid(const SampleSet<T>& sample_set, \
+                             SampleSet<T>* train, \
+                             SampleSet<T>* valid);
+};
+
 
 template<class T>
 SampleSet<T> SampleHandler<T>::make_samples(const Mat<T>& X, const Vec<int>& y, bool mix) {
@@ -37,3 +45,5 @@ int SampleHandler<T>::make_train_and_valid(const SampleSet<T>& sample_set, \
 
     return class_num;
 }
+
+#endif  // INCLUDE_SAMPLEHANDLER_H_

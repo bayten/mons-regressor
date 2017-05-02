@@ -1,7 +1,74 @@
 /* Copyright 2017 Baytekov Nikita */
 #include <type_traits>
-#include "./include/SampleHandler.h"
-#include "./include/GeneticDualizer.h"
+#include "../include/default_types.h"
+#include "../include/CollFamily.h"
+#include "../include/SampleHandler.h"
+#include "../include/CoveringHandler.h"
+#include "../include/GeneticAlgorithm.h"
+
+#ifndef INCLUDE_GENETICDUALIZER_H_
+#define INCLUDE_GENETICDUALIZER_H_
+
+template<typename S, typename T>
+class GeneticDualizer;
+
+
+template<typename S, typename T>
+class GenDualInitiator : public GeneticInitiator<S, T> {
+    GeneticDualizer<S, T>* my_parent;
+    CoveringHandler<T> covering_handler;
+ public:
+    explicit GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
+                              int init_num = 0);
+    ~GenDualInitiator() {}
+
+    Population<T> get_init_population(const SampleSet<S>& sample_set);
+};
+
+
+template<typename S, typename T>
+class GenDualMutator : public GeneticMutator<T> {
+    GeneticDualizer<S, T>* my_parent;
+    CoveringHandler<T> covering_handler;
+    float mutation_rate;
+    int64_t curr_iter;
+ public:
+    explicit GenDualMutator(GeneticDualizer<S, T>* init_parent_ptr,
+                            float init_pfrac = 0.0,
+                            float init_mrate = 0.2);
+    ~GenDualMutator() {}
+    virtual Population<T> mutate_population(const Population<T>& in_popul);
+ private:
+    Population<T> recover_admissibility(const Population<T>& in_popul);
+};
+
+
+template<typename S, typename T>
+class GeneticDualizer : public GeneticAlgorithm<S, T> {
+    SampleHandler<S> sample_handler;
+    ElColl<S> local_basis;
+    SampleSet<S> basic;
+    SampleSet<S> valid;
+    int target_tag;
+
+    Mat<bool> gen_matrix;
+
+ public:
+    explicit GeneticDualizer(int popul_size, float sel_frac, float max_mut,
+                             float mut_frac, TerminationCriterionType init_tcrit = kPopulConverged,
+                             float init_tcrit_val = 1.0);
+    ~GeneticDualizer();
+
+    void set_init_data(const SampleSet<S>& init_set,
+                       const ElColl<S>& init_lb,
+                       int init_target_tag);
+    Vec<ElColl<S> > decode_collections(Vec< Vec<T> > in_code);
+    virtual void update_costs(Population<T>* in_popul);
+
+    float get_quality(const Chromosome<T>& chromo);
+    const Mat<bool>& get_gen_matrix() const { return gen_matrix; }
+};
+
 
 template<typename S, typename T>
 GenDualInitiator<S, T>::GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr, int init_num):
@@ -11,9 +78,9 @@ GenDualInitiator<S, T>::GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
 template<typename S, typename T>
 Population<T> GenDualInitiator<S, T>::get_init_population(const SampleSet<S>& sample_set) {
     Population<T> out_popul;
-    Mat<bool> gen_matrix = my_parent->get_gen_matrix();
+    Mat<bool> gen_matrix(my_parent->get_gen_matrix());
     for (int i = 0; i < this->popul_num; i++) {
-        Vec<T> new_genes = covering_handler.build_covering(gen_matrix);
+        Vec<T> new_genes(covering_handler.build_covering(gen_matrix));
         new_genes = covering_handler.make_covering_deadend(gen_matrix, new_genes);
         if (!out_popul.add_chromo(Chromosome<T>(new_genes)))
             i--;
@@ -36,35 +103,40 @@ template<typename S, typename T>
 Population<T> GenDualMutator<S, T>::mutate_population(const Population<T>& in_popul) {
     int mut_frac = this->popul_frac * (1.0 - 1.0/(mutation_rate * curr_iter + 1.0));
     int popul_size = in_popul.get_size();
+    unsigned int rand_seed = static_cast<unsigned int>(time(0));
     Population<T> out_popul;
     if (std::is_same<T, bool>::value) {
         for (int i = 0; i < popul_size; i++) {
             int chromo_len = in_popul[i].get_size();
-            Vec<T> mut_chromo(chromo_len);
+            Vec<T> mut_chromo_vec(chromo_len);
             for (int j = 0; j < chromo_len; j++) {
-                if (static_cast<float>(rand_r(time(0))) / (RAND_MAX) > mut_frac)
-                    mut_chromo[i] = in_popul[i][j];
+                if (static_cast<float>(rand_r(&rand_seed)) / (RAND_MAX) > mut_frac)
+                    mut_chromo_vec[i] = in_popul[i][j];
                 else
-                    mut_chromo[i] = !in_popul[i][j];
+                    mut_chromo_vec[i] = !in_popul[i][j];
             }
+            Chromosome<T> mut_chromo(mut_chromo_vec);
             out_popul.add_chromo(mut_chromo);
         }
     } else if (std::is_same<T, int>::value) {
-        int sample_set_size = this->sample_set.get_size();
+        Mat<bool> gen_matrix(my_parent->get_gen_matrix());
 
         for (int i = 0; i < popul_size; i++) {
             int chromo_len = in_popul[i].get_size();
-            Vec<T> mut_chromo(chromo_len);
+            Vec<T> mut_chromo_vec(chromo_len);
             for (int j = 0; j < chromo_len; j++) {
-                if (static_cast<float>(rand_r(time(0))) / (RAND_MAX) > mut_frac) {
-                    mut_chromo[i] = in_popul[i][j];
+                if (static_cast<float>(rand_r(&rand_seed)) / (RAND_MAX) > mut_frac) {
+                    mut_chromo_vec[j] = in_popul[i][j];
                 } else {
-                    int rand_val = rand_r(time(0)) % sample_set_size;
+                    Vec<int> ones_vec(covering_handler.get_ones_places(gen_matrix[j]));
+                    int ones_size = ones_vec.get_size();
+                    int rand_val = ones_vec[rand_r(&rand_seed) % ones_size];
                     while (rand_val == in_popul[i][j])
-                        rand_val = rand_r(time(0)) % sample_set_size;
-                    mut_chromo[i] = rand_val;
+                        rand_val = ones_vec[rand_r(&rand_seed) % ones_size];
+                    mut_chromo_vec[j] = rand_val;
                 }
             }
+            Chromosome<T> mut_chromo(mut_chromo_vec);
             out_popul.add_chromo(mut_chromo);
         }
     }
@@ -83,6 +155,8 @@ Population<T> GenDualMutator<S, T>::recover_admissibility(const Population<T>& i
         new_vec = covering_handler.recover_admissibility(gen_matrix, in_popul_data[i]);
         out_popul.add_chromo(Chromosome<T>(new_vec));
     }
+
+    return out_popul;
 }
 
 
@@ -90,10 +164,10 @@ template<typename S, typename T>
 GeneticDualizer<S, T>::GeneticDualizer(int popul_size, float sel_frac, float max_mut,
                                        float mut_frac, TerminationCriterionType init_tcrit,
                                        float init_tcrit_val):
-            GeneticAlgorithm<S, T>(GenDualInitiator<S, T>(this, popul_size),
-                                   RouletteSelector<T>(sel_frac),
-                                   PanmixiaBreeder<T>(popul_size, kUniform),
-                                   GenDualMutator<S, T>(this, popul_size, mut_frac),
+            GeneticAlgorithm<S, T>(new GenDualInitiator<S, T>(this, popul_size),
+                                   new RouletteSelector<T>(sel_frac),
+                                   new PanmixiaBreeder<T>(popul_size, kUniform),
+                                   new GenDualMutator<S, T>(this, popul_size, mut_frac),
                                    init_tcrit,
                                    init_tcrit_val),
             sample_handler(),
@@ -101,6 +175,14 @@ GeneticDualizer<S, T>::GeneticDualizer(int popul_size, float sel_frac, float max
             basic(),
             valid(),
             target_tag(-1) {
+}
+
+template<typename S, typename T>
+GeneticDualizer<S, T>::~GeneticDualizer() {
+    delete this->initiator;
+    delete this->selector;
+    delete this->breeder;
+    delete this->mutator;
 }
 
 template<typename S, typename T>
@@ -125,24 +207,24 @@ Vec<ElColl<S> > GeneticDualizer<S, T>::decode_collections(Vec< Vec<T> > in_code)
 template<typename S, typename T>
 void GeneticDualizer<S, T>::update_costs(Population<T>* in_popul) {
     int chromo_num = in_popul->get_size();
-    float qualities[chromo_num] = {};
+    float* qualities = new float[chromo_num];
     float min_val = -1.0;
 
     for (int i = 0; i < chromo_num; i++) {
-        qualities[i] = get_quality(in_popul[i]);
+        qualities[i] = get_quality((*in_popul)[i]);
         if (qualities[i] < min_val || min_val < 0.0)
             min_val = qualities[i];
     }
 
     for (int i = 0; i < chromo_num; i++)
-        in_popul[i].set_cost(qualities[i]-min_val+1);
-    return 1;
+        (*in_popul)[i].set_score(qualities[i]-min_val+1);
+    delete [] qualities;
 }
 
 template<typename S, typename T>
 float GeneticDualizer<S, T>::get_quality(const Chromosome<T>& chromo) {
-    ClassSamples<T>& basic_class = basic.get_class(target_tag);
-    ClassSamples<T>& valid_class = valid.get_class(target_tag);
+    const ClassSamples<S>& basic_class = basic.get_class(target_tag);
+    const ClassSamples<S>& valid_class = valid.get_class(target_tag);
     Vec<T> chromo_genes = chromo.get_genes();
 
     int basic_class_num = basic_class.get_size();
@@ -191,3 +273,5 @@ void GeneticDualizer<S, T>::set_init_data(const SampleSet<S>& init_set,
     }
     get_gen_matrix();
 }
+
+#endif  // INCLUDE_GENETICDUALIZER_H_
