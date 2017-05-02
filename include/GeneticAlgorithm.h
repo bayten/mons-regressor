@@ -2,169 +2,31 @@
 #ifndef INCLUDE_GENETICALGORITHM_H_
 #define INCLUDE_GENETICALGORITHM_H_
 
-#include "../include/default_types.h"
-#include "../include/SampleHandler.h"
+#include "../include/genetic_types.h"
+#include "../include/GeneticSelector.h"
+#include "../include/GeneticBreeder.h"
 
 // TODO(Baytekov): Add weights!
 
-template<typename T>
-class Chromosome {
-    Vec<T> genes;
-    float score;
-
- public:
-    explicit Chromosome(Vec<T> init_genes, float init_score = 0.0);
-    explicit Chromosome(T init_gene, float init_score = 0.0);
-    explicit Chromosome(const Chromosome<T>& chromo_obj);
-    ~Chromosome();
-
-    int get_size() const { return genes.get_size(); }
-    const Vec<T>& get_genes() const { return genes; }
-    float get_score() const { return score; }
-    void set_score(float score_val) { score = score_val; }
-
-    Chromosome<T>& operator=(const Chromosome<T>& chromo_obj);
-    bool operator==(const Chromosome<T>& chromo_obj);
-    T& operator[] (int idx) { return genes[idx]; }
-};
-
-template<typename T>
-class Population {
-    Vec< Chromosome<T> > chromo_vec;
-
- public:
-    explicit Population(Vec< Chromosome<T> > init_vec) : chromo_vec(init_vec) {}
-    Population() {}
-    ~Population() {}
-
-    bool add_chromo(Chromosome<T> add_obj);
-    bool del_chromo(int idx);
-
-    const Vec< Chromosome<T> >& get_chromos() const { return chromo_vec; }
-    Vec< Vec<T> > get_popul_data() const;
-    int get_size() const { return chromo_vec.get_size(); }
-
-    float get_avg_score() const;
-    const Chromosome<T>& get_best_ind() const;
-
-    Chromosome<T>& operator[] (int idx) { return chromo_vec[idx]; }
-};
-
-
 template<typename S, typename T>
 class GeneticInitiator {
+ protected:
     int popul_num;
 
  public:
     explicit GeneticInitiator(int init_num = 0) : popul_num(init_num) {}
-    virtual ~GeneticInitiator() = 0;
+    virtual ~GeneticInitiator() {}
     virtual Population<T> get_init_population(const SampleSet<S>& sample_set) = 0;
 };
 
 
 template<typename T>
-class GeneticSelector {
-    float popul_frac;
- public:
-    explicit GeneticSelector(int init_pfrac = 0.5) : popul_frac(init_pfrac) {}
-    virtual ~GeneticSelector() = 0;
-    virtual Population<T> select_population(const Population<T>& in_popul) = 0;
-};
-
-template<typename T>
-class TournamentSelector : public GeneticSelector<T> {
- public:
-    explicit TournamentSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
-    virtual ~TournamentSelector();
-    virtual Population<T> select_population(const Population<T>& in_popul);
-};
-
-template<typename T>
-class RouletteSelector : public GeneticSelector<T> {
- public:
-    explicit RouletteSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
-    virtual ~RouletteSelector();
-    virtual Population<T> select_population(const Population<T>& in_popul);
-};
-
-template<typename T>
-class RankingSelector : public GeneticSelector<T> {
-    int uniform_thresh;
- public:
-    explicit RankingSelector(int init_pfrac = 0.5, int init_uniform = 0);
-    virtual ~RankingSelector();
-    virtual Population<T> select_population(const Population<T>& in_popul);
-};
-
-template<typename T>
-class SigmaTruncSelector : public GeneticSelector<T> {
- public:
-    explicit SigmaTruncSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
-    virtual ~SigmaTruncSelector();
-    virtual Population<T> select_population(const Population<T>& in_popul);
-};
-
-enum CrossoverType {
-    kOnePoint = 0,
-    kMultiPoint = 1,
-    kUniform = 2,
-    kScoredUniform = 3
-};
-template<typename T>
-class GeneticBreeder {
-    int popul_num;
-    CrossoverType cross_type;
-    float cross_param;
-
- public:
-    explicit GeneticBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
-                            float init_cparam = 1.0);
-    virtual ~GeneticBreeder() = 0;
-    virtual Population<T> breed_new_population(const Population<T>& in_popul) = 0;
-
- protected:
-    virtual Vec< Chromosome<T> >apply_crossover(const Chromosome<T>& fst,
-                                                const Chromosome<T>& sec);
-};
-
-template<typename T>
-class PanmixiaBreeder : public GeneticBreeder<T> {
- public:
-    explicit PanmixiaBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
-                             float init_cparam = 1.0);
-    ~PanmixiaBreeder();
-    virtual Population<T> breed_new_population(const Population<T>& in_popul);
-};
-
-enum InOutBreederType {
-    kInPhenoType  = 0,
-    kInGenoType   = 1,
-    kOutPhenoType = 2,
-    kOutGenoType  = 3
-};
-template<typename T>
-class InOutBreeder : public GeneticBreeder<T> {
-    InOutBreederType breeder_type;
-
- public:
-    explicit InOutBreeder(int init_pnum = 0, InOutBreederType init_btype = kInPhenoType,
-                          CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
-    ~InOutBreeder();
-    virtual Population<T> breed_new_population(const Population<T>& in_popul);
-
- private:
-    virtual const Chromosome<T>& find_match(const Population<T>& in_popul,
-                                            const Chromosome<T>& suitor);
-    float find_geno_diff(const Chromosome<T>& fst, const Chromosome<T>& sec);
-};
-
-
-template<typename T>
 class GeneticMutator {
+ protected:
     float popul_frac;
  public:
     explicit GeneticMutator(int init_pfrac = 0.0) : popul_frac(init_pfrac) {}
-    virtual ~GeneticMutator() = 0;
+    virtual ~GeneticMutator() {}
     virtual Population<T> mutate_population(const Population<T>& in_popul) = 0;
 };
 
@@ -179,26 +41,123 @@ class GeneticAlgorithm {
  protected:
     SampleSet<S> sample_set;
 
-    GeneticInitiator<S, T> initiator;
-    GeneticSelector<T> selector;
-    GeneticBreeder<T> breeder;
-    GeneticMutator<T> mutator;
+    GeneticInitiator<S, T>* initiator;
+    GeneticSelector<T>* selector;
+    GeneticBreeder<T>* breeder;
+    GeneticMutator<T>* mutator;
 
     TerminationCriterionType term_crit;
     float term_crit_val;
 
  public:
-    GeneticAlgorithm(GeneticInitiator<S, T> init_initiator, GeneticSelector<T> init_selector,
-                     GeneticBreeder<T> init_breeder, GeneticMutator<T> init_mutator,
+    GeneticAlgorithm(GeneticInitiator<S, T>* init_initiator, GeneticSelector<T>* init_selector,
+                     GeneticBreeder<T>* init_breeder, GeneticMutator<T>* init_mutator,
                      TerminationCriterionType init_tcrit = kPopulConverged,
                      float init_tcrit_val = 1.0);
-    virtual ~GeneticAlgorithm();
+    explicit GeneticAlgorithm(const GeneticAlgorithm<S, T>& gen_obj);
+    virtual ~GeneticAlgorithm() {}
 
     virtual Vec< Vec<T> > execute_ga();
     virtual bool check_term_crit(Population<T> curr_popul, Population<T> new_popul,
                                  int64_t iter_cnt);
 
-     virtual void set_sample_set(SampleSet<T> init_set) { sample_set = init_set; }
+     virtual void set_sample_set(SampleSet<S> init_set) { sample_set = init_set; }
      virtual void update_costs(Population<T>* in_popul) = 0;
+     GeneticAlgorithm<S, T>& operator=(const GeneticAlgorithm<S, T>& gen_obj);
 };
+
+
+
+template<typename S, typename T>
+GeneticAlgorithm<S, T>::GeneticAlgorithm(GeneticInitiator<S, T>* init_initiator, \
+                                         GeneticSelector<T>*  init_selector, \
+                                         GeneticBreeder<T>*   init_breeder, \
+                                         GeneticMutator<T>*   init_mutator, \
+                                         TerminationCriterionType init_term_crit,
+                                         float init_term_crit_val) :
+                initiator(init_initiator),
+                selector(init_selector),
+                breeder(init_breeder),
+                mutator(init_mutator),
+                term_crit(init_term_crit),
+                term_crit_val(init_term_crit_val) {
+}
+
+template<typename S, typename T>
+GeneticAlgorithm<S, T>::GeneticAlgorithm(const GeneticAlgorithm<S, T>& gen_obj):
+        sample_set(gen_obj.sample_set),
+        initiator(gen_obj.initiator),
+        selector(gen_obj.selector),
+        breeder(gen_obj.breeder),
+        mutator(gen_obj.mutator),
+        term_crit(gen_obj.term_crit),
+        term_crit_val(gen_obj.term_crit_val) {
+}
+
+template<typename S, typename T>
+Vec< Vec<T> > GeneticAlgorithm<S, T>::execute_ga() {
+    Population<T> curr_population = initiator->get_init_population(sample_set);
+    int64_t iter_count = 0L;
+
+    while (true) {
+        update_costs(&curr_population);
+
+        Population<T> breed_population = selector->select_population(curr_population);
+        Population<T> new_population = breeder->breed_new_population(breed_population);
+
+        new_population = mutator->mutate_population(new_population);
+        update_costs(&new_population);
+
+        if (check_term_crit(curr_population, new_population, iter_count))
+            return new_population.get_popul_data();
+    }
+}
+
+template<typename S, typename T>
+bool GeneticAlgorithm<S, T>::check_term_crit(Population<T> curr_popul, \
+                                             Population<T> new_popul, \
+                                             int64_t iter_cnt) {
+    switch (term_crit) {
+        case kPopulConverged:
+        {
+            if (new_popul.get_avg_score() - curr_popul.get_avg_score() < term_crit_val)
+                return 1;
+            return 0;
+        }
+
+        case kBestConverged:
+        {
+            float new_best_score = new_popul.get_best_ind().get_score();
+            float curr_best_score = curr_popul.get_best_ind().get_score();
+            if (new_best_score - curr_best_score < term_crit_val)
+                return 1;
+            return 0;
+        }
+
+        case kMaxPopulNum:
+        {
+            if (iter_cnt < static_cast<int64_t>(term_crit_val))
+                return 1;
+            return 0;
+        }
+
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+template<typename S, typename T>
+GeneticAlgorithm<S, T>& GeneticAlgorithm<S, T>::operator=(const GeneticAlgorithm<S, T>& gen_obj) {
+    sample_set = gen_obj.sample_set;
+    initiator = gen_obj.initiator;
+    selector = gen_obj.selector;
+    breeder = gen_obj.breeder;
+    mutator = gen_obj.mutator;
+    term_crit = gen_obj.term_crit;
+    term_crit_val = gen_obj.term_crit_val;
+
+    return (*this);
+}
+
 #endif  // INCLUDE_GENETICALGORITHM_H_

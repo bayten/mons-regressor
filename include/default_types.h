@@ -11,11 +11,12 @@ class Vec {
  private:
     T* data;
     int sz;
+    int real_sz;
 
  public:
     explicit Vec(int size = 0);  // default constructor
     Vec(int size, T init_vals[]);  // -//-
-    explicit Vec(const Vec<T>& vec_obj);  // copy constructor
+    Vec(const Vec<T>& vec_obj);  // copy constructor
     explicit Vec(Vec<T>&& vec_obj);  // move constructor
     ~Vec();  // destructor
 
@@ -24,7 +25,7 @@ class Vec {
     T& operator[](int index);
     const T& operator[](int index) const;
 
-    void append(T apnd_obj, int index = -1);
+    void append(const T& apnd_obj, int index = -1);
     bool erase(int index = -1);
     Vec<T> cutslice(int begin, int end) const;
     Vec<T> sort() const;
@@ -44,11 +45,11 @@ class Mat {
  public:
     explicit Mat(int x = 0, int y = 0);
     Mat(int x, int y, T *init_vals[]);
-    explicit Mat(const Mat<T>& mat_obj);
+    Mat(const Mat<T>& mat_obj);
     explicit Mat(const Vec<T> & vec_obj);
     ~Mat() {}
 
-    Mat<T>& operator=(const Mat<T> & mat_obj);
+    Mat<T>& operator=(const Mat<T>& mat_obj);
     Vec<T>& operator[](int index);
     const Vec<T>& operator[](int index) const;
 
@@ -60,6 +61,8 @@ class Mat {
 template<typename T>
 Vec<T>::Vec(int size) {
     sz = size;
+    real_sz = size;
+
     if (sz > 0)
         data = new T[sz];
     else
@@ -69,6 +72,7 @@ Vec<T>::Vec(int size) {
 template<typename T>
 Vec<T>::Vec(int size, T init_vals[]) {
     sz = size;
+    real_sz = size;
 
     if (sz > 0) {
         data = new T[sz];
@@ -82,16 +86,16 @@ Vec<T>::Vec(int size, T init_vals[]) {
 template<typename T>
 Vec<T>::Vec(const Vec<T>& vec_obj) {
     sz = vec_obj.sz;
-
-    data = new T[sz];
-    for (int i = 0; i < sz; i++) {
+    real_sz = vec_obj.real_sz;
+    data = new T[real_sz];
+    for (int i = 0; i < sz; i++)
         data[i] = vec_obj.data[i];
-    }
 }
 
 template<typename T>
 Vec<T>::Vec(Vec<T>&& vec_obj) {
     sz = vec_obj.sz;
+    real_sz = vec_obj.real_sz;
     data = vec_obj.data;
     vec_obj.data = nullptr;
 }
@@ -107,16 +111,15 @@ Vec<T>& Vec<T>::operator=(const Vec<T>& vec_obj) {
     if (this == &vec_obj)  // assigning to myself
         return *this;
 
-    if (data != nullptr) {
+    if (data != nullptr)
         delete [] data;
-    }
 
     sz = vec_obj.sz;
+    real_sz = vec_obj.real_sz;
 
-    data = new T[sz];
-    for (int i = 0; i < sz; i++) {
+    data = new T[real_sz];
+    for (int i = 0; i < sz; i++)
         data[i] = vec_obj.data[i];
-    }
 
     return *this;
 }
@@ -125,10 +128,13 @@ template<typename T>
 Vec<T>& Vec<T>::operator=(Vec<T>&& vec_obj) {
     T* tmp_data = data;
     sz = vec_obj.sz;
+    real_sz = vec_obj.real_sz;
     data = vec_obj.data;
 
-    vec_obj = tmp_data;
+    vec_obj.data = tmp_data;
     tmp_data = nullptr;
+
+    return (*this);
 }
 
 template<typename T>
@@ -154,32 +160,35 @@ const T& Vec<T>::operator[](int index) const {
 }
 
 template<typename T>
-void Vec<T>::append(T apnd_obj, int index) {
+void Vec<T>::append(const T& apnd_obj, int index) {
     if (data == nullptr) {
         data = new T[1];
         data[0] = apnd_obj;
+        sz = 1;
+        real_sz = 1;
         return;
-    }
-
-    T* old_data = data;
-    data = new T[sz+1];
-
-    if (index == -1 || index+1 >= sz) {
-        for (int i = 0; i < sz; i++)
-            data[i] = old_data[i];
-        data[sz] = apnd_obj;
+    } else if (sz+1 <= real_sz) {
+        for (int i = sz; i > index; i--)
+            data[i] = data[i-1];
+        data[index] = apnd_obj;
+        sz++;
+        return;
     } else {
+        real_sz *= 2;
+        T* old_data = data;
+        data = new T[real_sz];
+
         for (int i = 0; i < index; i++)
             data[i] = old_data[i];
         for (int i = index; i < sz; i++)
             data[i+1] = old_data[i+1];
         data[index] = apnd_obj;
+
+        delete [] old_data;
+        old_data = nullptr;
+
+        sz++;
     }
-
-    delete [] old_data;
-    old_data = nullptr;
-
-    sz++;
 }
 
 template<typename T>
@@ -187,37 +196,22 @@ bool Vec<T>::erase(int index) {
     if (data == nullptr || (index < 0 && index != -1) || index >= sz)
         return 0;
 
-    T* old_data = data;
-    data = new T[--sz];
+    for (int i = index; i < sz-1; i++)
+            data[i] = data[i+1];
+    sz--;
 
-    if (index == -1) {
-        for (int i = 0; i < sz-1; i++)
-            data[i] = old_data[i];
-    } else {
-        for (int i = 0; i < index; i++)
-            data[i] = old_data[i];
-        for (int i = index; i < sz-1; i++)
-            data[i] = old_data[i+1];
-    }
-
-    delete [] old_data;
-    old_data = nullptr;
+    return 1;
 }
 
 template<typename T>
 Vec<T> Vec<T>::cutslice(int begin, int end) const {
-    T* old_data = data;
     int slice_sz = end+1-begin;
-    data = new T[sz-slice_sz];
-
     Vec<T> carved_slice(slice_sz);
 
-    for (int i = 0; i < begin; i++)
-        data[i] = old_data[i];
     for (int i = 0; i < slice_sz; i++)
-        carved_slice[i] = old_data[begin+i];
+        carved_slice[i] = data[begin+i];
     for (int i = end; i < sz; i++)
-        data[i-slice_sz] = old_data[i];
+        data[i-slice_sz] = data[i];
 
     sz = sz-slice_sz;
     return carved_slice;
@@ -229,7 +223,7 @@ Vec<T> Vec<T>::sort() const {
     for (int i = 0; i < sz; i++)
         new_data[i] = data[i];
 
-    std::sort(std::begin(new_data), std::end(new_data));
+    std::sort(new_data, new_data+sz);
     return Vec<T>(sz, new_data);
 }
 
