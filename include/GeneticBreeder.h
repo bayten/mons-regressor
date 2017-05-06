@@ -22,7 +22,9 @@ class GeneticBreeder {
  public:
     explicit GeneticBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
                             float init_cparam = 1.0);
+    GeneticBreeder(const GeneticBreeder<T>& gb_obj);
     virtual ~GeneticBreeder() {}
+
     virtual Population<T> breed_new_population(const Population<T>& in_popul) = 0;
 
  protected:
@@ -35,7 +37,9 @@ class PanmixiaBreeder : public GeneticBreeder<T> {
  public:
     explicit PanmixiaBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
                              float init_cparam = 1.0);
+    PanmixiaBreeder(const PanmixiaBreeder<T>& pb_obj);
     ~PanmixiaBreeder() {}
+
     virtual Population<T> breed_new_population(const Population<T>& in_popul);
 };
 
@@ -52,7 +56,9 @@ class InOutBreeder : public GeneticBreeder<T> {
  public:
     explicit InOutBreeder(int init_pnum = 0, InOutBreederType init_btype = kInPhenoType,
                           CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
+    InOutBreeder(const InOutBreeder<T>& iob_obj);
     ~InOutBreeder() {}
+
     virtual Population<T> breed_new_population(const Population<T>& in_popul);
 
  private:
@@ -66,6 +72,13 @@ class InOutBreeder : public GeneticBreeder<T> {
 template<typename T>
 GeneticBreeder<T>::GeneticBreeder(int init_pnum, CrossoverType init_ctype, float init_cparam):
         popul_num(init_pnum), cross_type(init_ctype), cross_param(init_cparam) {
+}
+
+template<typename T>
+GeneticBreeder<T>::GeneticBreeder(const GeneticBreeder<T>& gb_obj):
+        popul_num(gb_obj.popul_num),
+        cross_type(gb_obj.cross_type),
+        cross_param(gb_obj.cross_param) {
 }
 
 template<typename T>
@@ -155,6 +168,11 @@ PanmixiaBreeder<T>::PanmixiaBreeder(int init_pnum, CrossoverType init_ctype, flo
 }
 
 template<typename T>
+PanmixiaBreeder<T>::PanmixiaBreeder(const PanmixiaBreeder<T>& pb_obj):
+        GeneticBreeder<T>(pb_obj) {
+}
+
+template<typename T>
 Population<T> PanmixiaBreeder<T>::breed_new_population(const Population<T>& in_popul) {
     Population<T> out_popul;
     int in_popul_size = in_popul.get_size();
@@ -184,6 +202,12 @@ template<typename T>
 InOutBreeder<T>::InOutBreeder(int init_pnum, InOutBreederType init_btype,
                               CrossoverType init_ctype, float init_cparam):
         GeneticBreeder<T>(init_pnum, init_ctype, init_cparam), breeder_type(init_btype) {
+}
+
+template<typename T>
+InOutBreeder<T>::InOutBreeder(const InOutBreeder<T>& iob_obj):
+        GeneticBreeder<T>(iob_obj),
+        breeder_type(iob_obj.breeder_type) {
 }
 
 template<typename T>

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include "../include/log_wrapper.h"
+
 
 template<typename T>
 class Vec {
@@ -25,9 +27,12 @@ class Vec {
     T& operator[](int index);
     const T& operator[](int index) const;
 
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const Vec<S>& vec);
+
     void append(const T& apnd_obj, int index = -1);
     bool erase(int index = -1);
-    Vec<T> cutslice(int begin, int end) const;
+    Vec<T> cutslice(int begin, int end);
     Vec<T> sort() const;
     Vec<int> sort_indices() const;
     int get_size() const {
@@ -44,14 +49,24 @@ class Mat {
 
  public:
     explicit Mat(int x = 0, int y = 0);
-    Mat(int x, int y, T *init_vals[]);
+    Mat(int x, int y, T* init_vals[]);
     Mat(const Mat<T>& mat_obj);
-    explicit Mat(const Vec<T> & vec_obj);
+    explicit Mat(const Vec<T>& vec_obj);
     ~Mat() {}
+
+    Mat<T>& hadd(const Vec<T>& h_obj, int index = -1);
+    Mat<T>& vadd(const Vec<T>& v_obj, int index = -1);
+
+    Mat<T> get_rect(int x1, int y1, int x2 = -1, int y2 = -1);
+    Vec<T> get_col(int idx = -1);
 
     Mat<T>& operator=(const Mat<T>& mat_obj);
     Vec<T>& operator[](int index);
     const Vec<T>& operator[](int index) const;
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const Mat<S>& mat);
+
 
     int get_sx() const { return sx; }
     int get_sy() const { return sy; }
@@ -142,7 +157,7 @@ T& Vec<T>::operator[](int index) {
     if (index == -1) {
         return data[sz-1];
     } else if (index > sz) {
-        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        LOG_(error) << "Index " << index << " out of bounds for " << (*this) << "!";
         return data[0];
     }
     return data[index];
@@ -153,27 +168,53 @@ const T& Vec<T>::operator[](int index) const {
     if (index == -1) {
         return data[sz-1];
     } else if (index > sz) {
-        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        LOG_(error) << "Index " << index << " out of bounds for " << (*this) << "!";
         return data[0];
     }
     return data[index];
 }
 
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const Vec<S>& vec) {
+    std::stringstream buffer;
+    buffer << "Vec(" << vec.sz << "/" << vec.real_sz << "):[";
+
+    if (vec.data == nullptr) {
+        buffer << "nullptr";
+    } else if (vec.sz < 10) {
+        buffer << vec.data[0];
+        for (int i = 1; i < vec.sz; i++)
+            buffer << ", " << vec.data[i];
+    } else {
+        buffer << vec.data[0] << ", " << vec.data[1] << ", " << vec.data[2] << ", ..., ";
+        buffer << vec.data[vec.sz-3] << ", " << vec.data[vec.sz-2] << ", " << vec.data[vec.sz-1];
+    }
+    buffer << "]";
+    os << buffer.str();
+    return os;
+}
+
 template<typename T>
 void Vec<T>::append(const T& apnd_obj, int index) {
-    if (data == nullptr) {
+    if (index == -1)
+        index = sz;
+
+    // LOG_(trace) << "Appending " << apnd_obj << " on " << index << "position to " << (*this);
+
+    if (data == nullptr || real_sz <= 0) {
+        // LOG_(trace) << "Zero-size vector => creating new one";
         data = new T[1];
         data[0] = apnd_obj;
         sz = 1;
         real_sz = 1;
-        return;
     } else if (sz+1 <= real_sz) {
+        // LOG_(trace) << "Virtually extending vec size...";
         for (int i = sz; i > index; i--)
             data[i] = data[i-1];
         data[index] = apnd_obj;
         sz++;
-        return;
     } else {
+        // LOG_(trace) << "Extending vec for real...";
         real_sz *= 2;
         T* old_data = data;
         data = new T[real_sz];
@@ -186,25 +227,33 @@ void Vec<T>::append(const T& apnd_obj, int index) {
 
         delete [] old_data;
         old_data = nullptr;
-
         sz++;
     }
+    // LOG_(trace) << "New vec after append: " << (*this);
 }
 
 template<typename T>
 bool Vec<T>::erase(int index) {
-    if (data == nullptr || (index < 0 && index != -1) || index >= sz)
+    if (index == -1)
+        index = sz-1;
+
+    // LOG_(trace) << "Erasing element on position " << index << "...";
+    if (data == nullptr || index < 0 || index >= sz) {
+        LOG_(warning) << "Invalid 'erase' operation for " << (*this);
         return 0;
+    }
 
     for (int i = index; i < sz-1; i++)
             data[i] = data[i+1];
     sz--;
 
+    // LOG_(trace) << "New vec after erase: " << (*this);
     return 1;
 }
 
 template<typename T>
-Vec<T> Vec<T>::cutslice(int begin, int end) const {
+Vec<T> Vec<T>::cutslice(int begin, int end) {
+    LOG_(trace) << "Cutting slice from " << (*this) << "...";
     int slice_sz = end+1-begin;
     Vec<T> carved_slice(slice_sz);
 
@@ -214,6 +263,9 @@ Vec<T> Vec<T>::cutslice(int begin, int end) const {
         data[i-slice_sz] = data[i];
 
     sz = sz-slice_sz;
+
+    LOG_(trace) << "Residue: " << (*this);
+    LOG_(trace) << "Carved slice: " << carved_slice;
     return carved_slice;
 }
 
@@ -224,7 +276,10 @@ Vec<T> Vec<T>::sort() const {
         new_data[i] = data[i];
 
     std::sort(new_data, new_data+sz);
-    return Vec<T>(sz, new_data);
+
+    Vec<T> out_vec(sz, new_data);
+    LOG_(trace) << "Sorted vec: " << out_vec;
+    return out_vec;
 }
 
 template<typename T>
@@ -233,7 +288,10 @@ Vec<int> Vec<T>::sort_indices() const {
     std::iota(std::begin(idx), std::end(idx), 0);
     std::sort(std::begin(idx), std::end(idx),
               [this](int i1, int i2) { return this->data[i1] < this->data[i2]; });
-    return Vec<int>(sz, idx);
+
+    Vec<int> out_vec(sz, idx);
+    LOG_(trace) << "Vec of sorted indices: " << out_vec;
+    return out_vec;
 }
 
 
@@ -266,9 +324,59 @@ Mat<T>::Mat(const Mat<T>& mat_obj) : data(Vec< Vec<T> >(mat_obj.sx)) {
 template<typename T>
 Mat<T>::Mat(const Vec<T> & vec_obj) : data(Vec< Vec<T> >(1)) {
     sx = 1;
-    sy = vec_obj.sz;
+    sy = vec_obj.get_size();
 
     data[0] = vec_obj;
+}
+
+template<typename T>
+Mat<T>& Mat<T>::hadd(const Vec<T>& h_obj, int index) {
+    if (h_obj.get_size() != sy) {
+        LOG_(error) << "Can't h-add vector to matrix: " << h_obj.get_size() << " != " << sy;
+        return (*this);
+    }
+    data.append(h_obj, index);
+    sx++;
+    return (*this);
+}
+
+template<typename T>
+Mat<T>& Mat<T>::vadd(const Vec<T>& v_obj, int index) {
+    if (v_obj.get_size() != sx) {
+        LOG_(error) << "Can't v-add vector to matrix: " << v_obj.get_size() << " != " << sx;
+        return (*this);
+    }
+
+    for (int i = 0; i < sx; i++)
+        data[i].append(v_obj[i], index);
+    return (*this);
+}
+
+template<typename T>
+Mat<T> Mat<T>::get_rect(int x1, int y1, int x2, int y2) {
+    if(x2 == -1)
+        x2 = sx;
+    if(y2 == -1)
+        y2 = sy;
+
+    // LOG_(trace) << "Getting rect(" << x1 << ", " << y1 << ", " << x2 << ", " << y2 << ")";
+
+    Mat<T> out_mat(x2-x1, y2-y1);
+    for (int i = x1; i < x2; i++)
+        for (int j = y1; j < y2; j++)
+            out_mat[i-x1][j-y1] = data[i][j];
+
+    return out_mat;
+}
+
+template<typename T>
+Vec<T> Mat<T>::get_col(int idx) {
+    if(idx == -1)
+        idx = sy-1;
+    Vec<T> out_vec(sx);
+    for (int i = 0; i < sx; i++)
+        out_vec[i] = data[i][idx];
+    return out_vec;
 }
 
 template<typename T>
@@ -293,7 +401,7 @@ Vec<T>& Mat<T>::operator[](int index) {
     if (index == -1) {
         return data[sx-1];
     } else if (index > sx) {
-        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        LOG_(error) << "Index " << index << " out of bounds for " << (*this) << "!";
         return data[0];
     }
     return data[index];
@@ -304,10 +412,27 @@ const Vec<T>& Mat<T>::operator[](int index) const {
     if (index == -1) {
         return data[sx-1];
     } else if (index > sx) {
-        std::cout << "ERROR: Index out of bounds!" << std::endl;
+        LOG_(error) << "Index " << index << " out of bounds for " << (*this) << "!";
         return data[0];
     }
     return data[index];
+}
+
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const Mat<S>& mat) {
+    os << "Mat(" << mat.sx << "," << mat.sy << "):[" << std::endl;
+    if(mat.sx < 10) {
+        for (int i = 0; i < mat.sx; i++)
+            os << mat.data[i] << "," << std::endl;
+    } else {
+        for (int i = 0; i < 3; i++)
+            os << mat.data[i] << "," << std::endl;
+        os << "... ," << std::endl;
+        for (int i = mat.sx-3; i < mat.sx; i++)
+            os << mat.data[i] << "," << std::endl;
+    }
+    os << "]";
+    return os;
 }
 
 #endif  // INCLUDE_DEFAULT_TYPES_H_

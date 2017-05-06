@@ -23,6 +23,9 @@ class ElClass {
     const Vec<T> get_vals() const { return vals; }
 
     bool operator==(const ElClass<T>& comp_obj);
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const ElClass<S>& ec);
 };
 
 
@@ -44,7 +47,10 @@ class ElColl {
 
     bool operator==(const ElColl<T>& comp_obj);
     ElClass<T>& operator[](int idx) { return ecs[idx]; }
-    const ElClass<T>& operator[](int idx) const{ return ecs[idx]; }
+    const ElClass<T>& operator[](int idx) const { return ecs[idx]; }
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const ElColl<S>& el_coll);
 };
 
 
@@ -59,6 +65,9 @@ class CollFamily {
     Vec<bool> add(const Vec<ElColl<T> >& new_colls);  // ...
 
     int get_size() const { return colls.get_size(); }
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const CollFamily<S>& cfam);
 };
 
 
@@ -106,6 +115,18 @@ bool ElClass<T>::operator==(const ElClass<T>& comp_obj) {
     return 1;
 }
 
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const ElClass<S>& ec) {
+    std::stringstream buffer;
+    int ec_rank = ec.cols.get_size();
+    buffer << "ElClass<" << ec_rank << ">:[";
+    buffer << "(" << ec.cols[0] << "--" << ec.vals[0] << ")";
+    for (int i = 1; i < ec_rank; i++)
+        buffer << ", (" << ec.cols[i] << "--" << ec.vals[i] << ")";
+    buffer << "]";
+    os << buffer.str();
+    return os;
+}
 
 template<typename T>
 ElColl<T>::ElColl(int size, ElClass<T> init_ecs[]) : ecs(size) {
@@ -155,6 +176,19 @@ bool ElColl<T>::operator==(const ElColl<T>& comp_obj) {
     return 1;
 }
 
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const ElColl<S>& el_coll) {
+    std::stringstream buffer;
+    int el_coll_size = el_coll.ecs.get_size();
+    buffer << "ElColl<" << el_coll_size << ">:[";
+    buffer << el_coll.ecs[0];
+    for (int i = 1; i < el_coll_size; i++)
+        buffer << ", " << el_coll.ecs[i];
+    buffer << "]";
+    os << buffer.str();
+    return os;
+}
+
 
 template<typename T>
 CollFamily<T>::CollFamily(int size, ElColl<T> init_colls[]): colls(size) {
@@ -182,6 +216,19 @@ Vec<bool> CollFamily<T>::add(const Vec<ElColl<T> >& new_colls) {
             colls.append(new_colls[i]);
     }
     return add_state;
+}
+
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const CollFamily<S>& cfam) {
+    std::stringstream buffer;
+    int cfam_size = cfam.colls.get_size();
+    buffer << "CFamily<" << cfam_size << ">:[";
+    buffer << cfam.colls[0];
+    for (int i = 1; i < cfam_size; i++)
+        buffer << ", " << cfam.colls[i];
+    buffer << "]";
+    os << buffer.str();
+    return os;
 }
 
 #endif  // INCLUDE_COLLFAMILY_H_

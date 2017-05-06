@@ -12,7 +12,9 @@ class GeneticSelector {
     float popul_frac;
  public:
     explicit GeneticSelector(int init_pfrac = 0.5) : popul_frac(init_pfrac) {}
+    GeneticSelector(const GeneticSelector<T>& gs_obj) : popul_frac(gs_obj.popul_frac) {}
     virtual ~GeneticSelector() {}
+
     virtual Population<T> select_population(const Population<T>& in_popul) = 0;
 };
 
@@ -21,6 +23,8 @@ template<typename T>
 class TournamentSelector : public GeneticSelector<T> {
  public:
     explicit TournamentSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
+    TournamentSelector(const TournamentSelector<T>& ts_obj);
+
     virtual ~TournamentSelector() {}
     virtual Population<T> select_population(const Population<T>& in_popul);
 };
@@ -29,7 +33,9 @@ template<typename T>
 class RouletteSelector : public GeneticSelector<T> {
  public:
     explicit RouletteSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
+    RouletteSelector(const RouletteSelector<T>& rs_obj);
     virtual ~RouletteSelector() {}
+
     virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
@@ -38,7 +44,9 @@ class RankingSelector : public GeneticSelector<T> {
     int uniform_thresh;
  public:
     explicit RankingSelector(int init_pfrac = 0.5, int init_uniform = 0);
+    RankingSelector(const RankingSelector<T>& rs_obj);
     virtual ~RankingSelector() {}
+
     virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
@@ -46,11 +54,18 @@ template<typename T>
 class SigmaTruncSelector : public GeneticSelector<T> {
  public:
     explicit SigmaTruncSelector(int init_pfrac = 0.5) : GeneticSelector<T>(init_pfrac) {}
+    SigmaTruncSelector(const SigmaTruncSelector<T>& sts_obj);
     virtual ~SigmaTruncSelector() {}
+
     virtual Population<T> select_population(const Population<T>& in_popul);
 };
 
 
+
+template<typename T>
+TournamentSelector<T>::TournamentSelector(const TournamentSelector<T>& ts_obj):
+        GeneticSelector<T>(ts_obj) {
+}
 
 template<typename T>
 Population<T> TournamentSelector<T>::select_population(const Population<T>& in_popul) {
@@ -79,6 +94,11 @@ Population<T> TournamentSelector<T>::select_population(const Population<T>& in_p
     return out_popul;
 }
 
+
+template<typename T>
+RouletteSelector<T>::RouletteSelector(const RouletteSelector<T>& rs_obj):
+        GeneticSelector<T>(rs_obj) {
+}
 
 template<typename T>
 Population<T> RouletteSelector<T>::select_population(const Population<T>& in_popul) {
@@ -115,6 +135,12 @@ RankingSelector<T>::RankingSelector(int init_pfrac, int init_uniform) :
 }
 
 template<typename T>
+RankingSelector<T>::RankingSelector(const RankingSelector<T>& rs_obj):
+        GeneticSelector<T>(rs_obj),
+        uniform_thresh(rs_obj.uniform_thresh) {
+}
+
+template<typename T>
 Population<T> RankingSelector<T>::select_population(const Population<T>& in_popul) {
     Population<T> out_popul;
     int popul_size = in_popul.get_size();
@@ -141,6 +167,11 @@ Population<T> RankingSelector<T>::select_population(const Population<T>& in_popu
     return out_popul;
 }
 
+
+template<typename T>
+SigmaTruncSelector<T>::SigmaTruncSelector(const SigmaTruncSelector<T>& sts_obj):
+        GeneticSelector<T>(sts_obj) {
+}
 
 template<typename T>
 Population<T> SigmaTruncSelector<T>::select_population(const Population<T>& in_popul) {

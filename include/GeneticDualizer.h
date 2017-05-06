@@ -12,7 +12,6 @@
 template<typename S, typename T>
 class GeneticDualizer;
 
-
 template<typename S, typename T>
 class GenDualInitiator : public GeneticInitiator<S, T> {
     GeneticDualizer<S, T>* my_parent;
@@ -20,6 +19,7 @@ class GenDualInitiator : public GeneticInitiator<S, T> {
  public:
     explicit GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
                               int init_num = 0);
+    GenDualInitiator(const GenDualInitiator<S, T>& gi_obj);
     ~GenDualInitiator() {}
 
     Population<T> get_init_population(const SampleSet<S>& sample_set);
@@ -36,6 +36,7 @@ class GenDualMutator : public GeneticMutator<T> {
     explicit GenDualMutator(GeneticDualizer<S, T>* init_parent_ptr,
                             float init_pfrac = 0.0,
                             float init_mrate = 0.2);
+    GenDualMutator(const GenDualMutator<S, T>& gm_obj);
     ~GenDualMutator() {}
     virtual Population<T> mutate_population(const Population<T>& in_popul);
  private:
@@ -54,9 +55,11 @@ class GeneticDualizer : public GeneticAlgorithm<S, T> {
     Mat<bool> gen_matrix;
 
  public:
-    explicit GeneticDualizer(int popul_size, float sel_frac, float max_mut,
-                             float mut_frac, TerminationCriterionType init_tcrit = kPopulConverged,
-                             float init_tcrit_val = 1.0);
+    GeneticDualizer(int popul_size, float sel_frac, float max_mut,
+                    float mut_frac, TerminationCriterionType init_tcrit = kPopulConverged,
+                    float init_tcrit_val = 1.0);
+    GeneticDualizer (const GeneticDualizer<S, T>& gd_obj);
+
     ~GeneticDualizer();
 
     void set_init_data(const SampleSet<S>& init_set,
@@ -73,6 +76,13 @@ class GeneticDualizer : public GeneticAlgorithm<S, T> {
 template<typename S, typename T>
 GenDualInitiator<S, T>::GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr, int init_num):
         GeneticInitiator<S, T>(init_num), my_parent(init_parent_ptr), covering_handler() {
+}
+
+template<typename S, typename T>
+GenDualInitiator<S, T>::GenDualInitiator(const GenDualInitiator<S, T>& gi_obj):
+        GeneticInitiator<S, T>(gi_obj),
+        my_parent(gi_obj.my_parent),
+        covering_handler(gi_obj.covering_handler) {
 }
 
 template<typename S, typename T>
@@ -97,6 +107,14 @@ GenDualMutator<S, T>::GenDualMutator(GeneticDualizer<S, T>* init_parent_ptr,
         my_parent(init_parent_ptr),
         mutation_rate(init_mrate),
         curr_iter(0) {
+}
+
+template<typename S, typename T>
+GenDualMutator<S, T>::GenDualMutator(const GenDualMutator<S, T>& gm_obj):
+        GeneticMutator<T>(gm_obj),
+        my_parent(gm_obj.my_parent),
+        mutation_rate(gm_obj.mutation_rate),
+        curr_iter(gm_obj.curr_iter) {
 }
 
 template<typename S, typename T>
@@ -175,14 +193,37 @@ GeneticDualizer<S, T>::GeneticDualizer(int popul_size, float sel_frac, float max
             basic(),
             valid(),
             target_tag(-1) {
+    LOG_(debug) << "Created GeneticDualizer instance (by usual constructor).";
+}
+
+template<typename S, typename T>
+GeneticDualizer<S, T>::GeneticDualizer(const GeneticDualizer<S, T>& gd_obj):
+            GeneticAlgorithm<S, T>(nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   gd_obj.term_crit,
+                                   gd_obj.term_crit_val),
+            sample_handler(gd_obj.sample_handler),
+            local_basis(gd_obj.local_basis),
+            basic(gd_obj.basic),
+            valid(gd_obj.valid),
+            target_tag(-1) {
+    this->initiator = new GenDualInitiator<S, T>(*dynamic_cast<GenDualInitiator<S, T>*>(gd_obj.initiator));
+    this->selector = new RouletteSelector<T>(*dynamic_cast<RouletteSelector<T>*>(gd_obj.selector));
+    this->breeder = new PanmixiaBreeder<T>(*dynamic_cast<PanmixiaBreeder<T>*>(gd_obj.breeder));
+    this->mutator = new GenDualMutator<S, T>(*dynamic_cast<GenDualMutator<S, T>*>(gd_obj.mutator));
+    LOG_(debug) << "Created GeneticDualizer instance (by copy constructor).";
 }
 
 template<typename S, typename T>
 GeneticDualizer<S, T>::~GeneticDualizer() {
+    LOG_(trace) << "Deleting pointers to algo instances...";
     delete this->initiator;
     delete this->selector;
     delete this->breeder;
     delete this->mutator;
+    LOG_(debug) << "GeneticDualizer instance was destroyed";
 }
 
 template<typename S, typename T>

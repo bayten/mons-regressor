@@ -27,6 +27,9 @@ class Chromosome {
     bool operator== (const Chromosome<T>& chromo_obj) const;
     T& operator[] (int idx) { return genes[idx]; }
     const T& operator[] (int idx) const { return genes[idx]; }
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const Chromosome<S>& chromo);
 };
 
 
@@ -51,6 +54,9 @@ class Population {
 
     Chromosome<T>& operator[] (int idx) { return chromo_vec[idx]; }
     const Chromosome<T>& operator[] (int idx) const { return chromo_vec[idx]; }
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const Population<S>& popul);
 };
 
 
@@ -95,15 +101,25 @@ bool Chromosome<T>::operator==(const Chromosome<T>& chromo_obj) const {
 }
 
 
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const Chromosome<S>& chromo) {
+    std::stringstream buffer;
+    buffer << "Chromo<" << chromo.score << ">(" << chromo.genes << ")";
+    os << buffer.str();
+    return os;
+}
+
 template<typename T>
 bool Population<T>::add_chromo(const Chromosome<T>& add_obj) {
     int chromo_num = chromo_vec.get_size();
 
     for (int i = 0; i < chromo_num; i++)
-        if (add_obj == chromo_vec[i])
+        if (add_obj == chromo_vec[i]) {
+            LOG_(trace) << "Chromosome is a duplicate - no sense to add it";
             return 0;
+        }
     chromo_vec.append(add_obj);
-
+    LOG_(trace) << "New chromosome was added: " << (*this);
     return 1;
 }
 
@@ -118,7 +134,9 @@ float Population<T>::get_avg_score() const {
     float total_score = 0.0;
     for (int i = 0; i < chromo_num; i++)
         total_score += chromo_vec[i].get_score();
+    total_score /= chromo_num;
 
+    LOG_(trace) << "Average score for " << (*this) << ": " << total_score;
     return total_score;
 }
 
@@ -135,7 +153,7 @@ const Chromosome<T>& Population<T>::get_best_ind() const {
             max_score = curr_score;
         }
     }
-
+    LOG_(trace) << "Best chromosome for " << (*this) << " is on " << idx << " position";
     return chromo_vec[idx];
 }
 
@@ -147,6 +165,19 @@ Vec< Vec<T> > Population<T>::get_popul_data() const {
     for (int i = 0; i < chromo_len; i++)
         out_vec[i] = chromo_vec[i].get_genes();
     return out_vec;
+}
+
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const Population<S>& popul) {
+    std::stringstream buffer;
+    int chromo_size = popul.chromo_vec.get_size();
+    buffer << "Popul<" << chromo_size << ">:[";
+    buffer << popul.chromo_vec[0];
+    for (int i = 1; i < chromo_size; i++)
+        buffer << ", " << popul.chromo_vec[i];
+    buffer << "]";
+    os << buffer.str();
+    return os;
 }
 
 #endif  // INCLUDE_GENETIC_TYPES_H_

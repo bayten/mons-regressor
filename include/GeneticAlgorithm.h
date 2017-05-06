@@ -15,7 +15,9 @@ class GeneticInitiator {
 
  public:
     explicit GeneticInitiator(int init_num = 0) : popul_num(init_num) {}
+    GeneticInitiator(const GeneticInitiator<S, T>& gi_obj) : popul_num(gi_obj.popul_num) {}
     virtual ~GeneticInitiator() {}
+
     virtual Population<T> get_init_population(const SampleSet<S>& sample_set) = 0;
 };
 
@@ -24,9 +26,12 @@ template<typename T>
 class GeneticMutator {
  protected:
     float popul_frac;
+
  public:
     explicit GeneticMutator(int init_pfrac = 0.0) : popul_frac(init_pfrac) {}
+    GeneticMutator(const GeneticMutator<T>& gm_obj) : popul_frac(gm_obj.popul_frac) {}
     virtual ~GeneticMutator() {}
+
     virtual Population<T> mutate_population(const Population<T>& in_popul) = 0;
 };
 
@@ -54,7 +59,6 @@ class GeneticAlgorithm {
                      GeneticBreeder<T>* init_breeder, GeneticMutator<T>* init_mutator,
                      TerminationCriterionType init_tcrit = kPopulConverged,
                      float init_tcrit_val = 1.0);
-    explicit GeneticAlgorithm(const GeneticAlgorithm<S, T>& gen_obj);
     virtual ~GeneticAlgorithm() {}
 
     virtual Vec< Vec<T> > execute_ga();
@@ -63,7 +67,6 @@ class GeneticAlgorithm {
 
      virtual void set_sample_set(SampleSet<S> init_set) { sample_set = init_set; }
      virtual void update_costs(Population<T>* in_popul) = 0;
-     GeneticAlgorithm<S, T>& operator=(const GeneticAlgorithm<S, T>& gen_obj);
 };
 
 
@@ -81,17 +84,7 @@ GeneticAlgorithm<S, T>::GeneticAlgorithm(GeneticInitiator<S, T>* init_initiator,
                 mutator(init_mutator),
                 term_crit(init_term_crit),
                 term_crit_val(init_term_crit_val) {
-}
-
-template<typename S, typename T>
-GeneticAlgorithm<S, T>::GeneticAlgorithm(const GeneticAlgorithm<S, T>& gen_obj):
-        sample_set(gen_obj.sample_set),
-        initiator(gen_obj.initiator),
-        selector(gen_obj.selector),
-        breeder(gen_obj.breeder),
-        mutator(gen_obj.mutator),
-        term_crit(gen_obj.term_crit),
-        term_crit_val(gen_obj.term_crit_val) {
+    LOG_(debug) << "Created GeneticAlgorithm instance (by usual constructor).";
 }
 
 template<typename S, typename T>
@@ -145,19 +138,6 @@ bool GeneticAlgorithm<S, T>::check_term_crit(Population<T> curr_popul, \
             return 0;
     }
     return 0;
-}
-
-template<typename S, typename T>
-GeneticAlgorithm<S, T>& GeneticAlgorithm<S, T>::operator=(const GeneticAlgorithm<S, T>& gen_obj) {
-    sample_set = gen_obj.sample_set;
-    initiator = gen_obj.initiator;
-    selector = gen_obj.selector;
-    breeder = gen_obj.breeder;
-    mutator = gen_obj.mutator;
-    term_crit = gen_obj.term_crit;
-    term_crit_val = gen_obj.term_crit_val;
-
-    return (*this);
 }
 
 #endif  // INCLUDE_GENETICALGORITHM_H_

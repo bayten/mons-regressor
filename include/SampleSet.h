@@ -5,7 +5,7 @@
 #include <algorithm>
 #include "../include/default_types.h"
 
-template<class T>
+template<typename T>
 class ClassSamples {
  private:
     Mat<T> objs;
@@ -23,10 +23,13 @@ class ClassSamples {
 
     Vec<T>& operator[](int index) { return objs[index]; }
     const Vec<T>& operator[](int index) const { return objs[index]; }
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const ClassSamples<S>& cl_samps);
 };
 
 
-template<class T>
+template<typename T>
 class SampleSet {
  private:
     Vec< ClassSamples<T> > samples;
@@ -57,6 +60,9 @@ class SampleSet {
     SampleSet<T>& operator= (const SampleSet<T>& copy_obj);  // copy assignment
     Vec<T>& operator[](int abs_index);
     const Vec<T>& operator[](int abs_index) const;
+
+    template<typename S>
+    friend std::ostream& operator<<(std::ostream& os, const SampleSet<S>& sset);
 };
 
 
@@ -67,6 +73,13 @@ void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
     *torn_y = Vec<int>(tear_num);
     for (int j = 0; j < tear_num; j++)
         (*torn_y)[j] = class_tag;
+}
+
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const ClassSamples<S>& cl_samps) {
+    int csamps_size = cl_samps.objs.get_sx();
+    os << "ClassSamples{" << csamps_size << ", tag:" << cl_samps.class_tag << "}";
+    return os;
 }
 
 template<typename T>
@@ -172,6 +185,20 @@ SampleSet<T>& SampleSet<T>::operator= (const SampleSet<T>& copy_obj) {
     samples = copy_obj.get_samples();
     total_size = copy_obj.get_total_size();
     return (*this);
+}
+
+
+template<typename S>
+std::ostream& operator<<(std::ostream& os, const SampleSet<S>& sset) {
+    std::stringstream buffer;
+    int sset_size = sset.samples.get_size();
+    buffer << "SampleSet{" << sset_size << "; " << sset.total_size << "}:[";
+    buffer << sset.samples[0];
+    for (int i = 1; i < sset_size; i++)
+        buffer << ", " << sset.samples[i];
+    buffer << "]";
+    os << buffer.str();
+    return os;
 }
 
 #endif  // INCLUDE_SAMPLESET_H_

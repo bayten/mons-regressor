@@ -8,7 +8,7 @@
 template<class T>
 class SampleHandler {
  public:
-    SampleHandler() {}
+    SampleHandler() { LOG_(debug) << "Created SampleHandler instance successfully"; }
     ~SampleHandler() {}
 
     SampleSet<T> make_samples(const Mat<T>& X, const Vec<int>& y, bool mix = true);

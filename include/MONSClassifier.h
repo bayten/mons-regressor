@@ -25,7 +25,7 @@ class MONSClassifier {
     explicit MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
                             LBBuilder<S> init_lb_builder = RandomLBBuilder<S>(),
                             int init_miter = 1000, float init_eps = 0.0001);
-    ~MONSClassifier() {}
+    ~MONSClassifier() { LOG_(debug) << "MONSClassifier was destroyed."; }
 
     void fit(const Mat<S>& X, const Vec<int>& y);
     Vec<int> predict(const Mat<S>& X);
@@ -49,29 +49,39 @@ MONSClassifier<S, T>::MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
         coll_sets(),
         max_iter(init_miter),
         eps(init_eps) {
+    LOG_(debug) << "MONSClassifier instance was created (by usual constructor).";
 }
 
 template<typename S, typename T>
 void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
+    LOG_(trace) << "Process of model fitting has begun...";
     train_set = sample_handler.make_samples(X, y, true);
     SampleSet<S> train, valid;
     sample_handler.make_train_and_valid(train_set, &train, &valid);
     int class_num = train_set.get_class_num();
 
     Vec<float> avg_margins(valid.get_total_size());
+
+    LOG_(trace) << "Starting main fitting loop...";
     for (int i = 1; i <= max_iter; i++) {
+        LOG_(trace) << "Loop iteration: " << i;
         for (int k = 0; k < class_num; k++) {
+            LOG_(trace) << "For class: " << k;
+            LOG_(trace) << "Building local basis...";
             ElColl<S> local_basis = lb_builder.build_lb(train, k);
 
+            LOG_(trace) << "Processing Genetic Algorithm...";
             genetic_dualizer.set_init_data(train, local_basis, k);
             Vec< Vec<T> > encoded_colls = genetic_dualizer.execute_ga();
             Vec< ElColl<S> > new_colls = genetic_dualizer.decode_collections(encoded_colls);
 
+            LOG_(trace) << "Adding new collections...";
             coll_sets[k].add(new_colls);
         }
-
-        if (check_margin(valid, &avg_margins, i))
+        if (check_margin(valid, &avg_margins, i)) {
+            LOG_(trace) << "Main loop was stopped because of margins' condition";
             break;
+        }
     }
 }
 

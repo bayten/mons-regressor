@@ -1,8 +1,8 @@
 OBJECTS=main.o
 CC=g++
-INC_PATH=$(pwd)/include
-CFLAGS=-Wall -Wextra -Werror -Wpedantic -Wno-unused-parameter -std=c++14 -O2 -I$(INC_PATH)
-CLIBS= -L/usr/local/lib
+INC_PATH="$(shell pwd)/include"
+CFLAGS=-Wall -Wextra -Werror -Wpedantic -Wno-unused-parameter -std=c++14 -O2 -DBOOST_LOG_DYN_LINK -I$(INC_PATH) -I/usr/include/
+CLIBS= -L/usr/local/lib -lboost_log -lpthread -lboost_thread -lboost_system -lboost_log_setup
 
 all : main
 
@@ -14,5 +14,5 @@ main.o : main.cpp
 
 
 clean :
-	rm -f *.o main
+	rm -f *.o *.log main
 
