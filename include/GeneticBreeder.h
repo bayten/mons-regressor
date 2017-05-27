@@ -1,6 +1,6 @@
 /* Copyright 2017 Baytekov Nikita */
 
-#include "../include/genetic_types.h"
+#include "genetic_types.h"
 
 #ifndef INCLUDE_GENETICBREEDER_H_
 #define INCLUDE_GENETICBREEDER_H_
@@ -15,13 +15,16 @@ enum CrossoverType {
 template<typename T>
 class GeneticBreeder {
  protected:
-    int popul_num;
+    float popul_frac;
+    int popul_lim;
     CrossoverType cross_type;
     float cross_param;
 
+    bool is_max_sf;  // is maximizing or minimizing fitness function
+
  public:
-    explicit GeneticBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
-                            float init_cparam = 1.0);
+    explicit GeneticBreeder(float init_pfrac = 0.0, int init_plim = 0, bool init_max_sf = true,
+                            CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
     GeneticBreeder(const GeneticBreeder<T>& gb_obj);
     virtual ~GeneticBreeder() {}
 
@@ -35,8 +38,8 @@ class GeneticBreeder {
 template<typename T>
 class PanmixiaBreeder : public GeneticBreeder<T> {
  public:
-    explicit PanmixiaBreeder(int init_pnum = 0, CrossoverType init_ctype = kOnePoint,
-                             float init_cparam = 1.0);
+    explicit PanmixiaBreeder(float init_pfrac = 0.0, int init_plim = 0, bool init_max_sf = true,
+                             CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
     PanmixiaBreeder(const PanmixiaBreeder<T>& pb_obj);
     ~PanmixiaBreeder() {}
 
@@ -54,8 +57,10 @@ class InOutBreeder : public GeneticBreeder<T> {
     InOutBreederType breeder_type;
 
  public:
-    explicit InOutBreeder(int init_pnum = 0, InOutBreederType init_btype = kInPhenoType,
+    explicit InOutBreeder(float init_pfrac = 0.0, int init_plim = 0, bool init_max_sf = true,
+                          InOutBreederType init_btype = kInPhenoType,
                           CrossoverType init_ctype = kOnePoint, float init_cparam = 1.0);
+
     InOutBreeder(const InOutBreeder<T>& iob_obj);
     ~InOutBreeder() {}
 
@@ -70,23 +75,29 @@ class InOutBreeder : public GeneticBreeder<T> {
 
 
 template<typename T>
-GeneticBreeder<T>::GeneticBreeder(int init_pnum, CrossoverType init_ctype, float init_cparam):
-        popul_num(init_pnum), cross_type(init_ctype), cross_param(init_cparam) {
+GeneticBreeder<T>::GeneticBreeder(float init_pfrac, int init_plim, bool init_max_sf,
+                                  CrossoverType init_ctype, float init_cparam):
+        popul_frac(init_pfrac),
+        popul_lim(init_plim),
+        cross_type(init_ctype),
+        cross_param(init_cparam),
+        is_max_sf(init_max_sf) {
 }
 
 template<typename T>
 GeneticBreeder<T>::GeneticBreeder(const GeneticBreeder<T>& gb_obj):
-        popul_num(gb_obj.popul_num),
+        popul_frac(gb_obj.popul_frac),
+        popul_lim(gb_obj.popul_lim),
         cross_type(gb_obj.cross_type),
-        cross_param(gb_obj.cross_param) {
+        cross_param(gb_obj.cross_param),
+        is_max_sf(gb_obj.is_max_sf) {
 }
 
 template<typename T>
 Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst,
                                                         const Chromosome<T>& sec) {
     int chromo_len = fst.get_size();
-    unsigned int rand_seed = static_cast<unsigned int>(time(0));
-    int rand_val = rand_r(&rand_seed) % chromo_len;
+    int rand_val = rand() % chromo_len;
     Vec<T> fst_child_genes(chromo_len);
     Vec<T> sec_child_genes(chromo_len);
     Vec< Chromosome<T> > output_vec;
@@ -130,7 +141,7 @@ Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst
                 output_vec.append(fst_child);
                 output_vec.append(sec_child);
 
-                rand_val = rand_r(&rand_seed) % chromo_len;
+                rand_val = rand() % chromo_len;
             }
             break;
         }
@@ -138,7 +149,7 @@ Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst
         case kUniform:
         {
             for (int i = 0; i < chromo_len; i++)
-                fst_child_genes[i] = (rand_r(&rand_seed) % 2) ? fst[i] : sec[i];
+                fst_child_genes[i] = (rand() % 2) ? fst[i] : sec[i];
             const Chromosome<T> fst_child(fst_child_genes);
             output_vec.append(fst_child);
             break;
@@ -147,7 +158,7 @@ Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst
         case kScoredUniform:
         {
             for (int i = 0; i < chromo_len; i++) {
-                if (rand_r(&rand_seed) % total_score > fst_score)
+                if (rand() % total_score > fst_score)
                     fst_child_genes[i] = fst[i];
                 else
                     fst_child_genes[i] = sec[i];
@@ -163,8 +174,9 @@ Vec< Chromosome<T> > GeneticBreeder<T>::apply_crossover(const Chromosome<T>& fst
 
 
 template<typename T>
-PanmixiaBreeder<T>::PanmixiaBreeder(int init_pnum, CrossoverType init_ctype, float init_cparam):
-        GeneticBreeder<T>(init_pnum, init_ctype, init_cparam) {
+PanmixiaBreeder<T>::PanmixiaBreeder(float init_pfrac, int init_plim, bool init_max_sf,
+                                    CrossoverType init_ctype, float init_cparam):
+        GeneticBreeder<T>(init_pfrac, init_plim, init_max_sf, init_ctype, init_cparam) {
 }
 
 template<typename T>
@@ -176,22 +188,25 @@ template<typename T>
 Population<T> PanmixiaBreeder<T>::breed_new_population(const Population<T>& in_popul) {
     Population<T> out_popul;
     int in_popul_size = in_popul.get_size();
-    unsigned int rand_seed = static_cast<unsigned int>(time(0));
-    if (in_popul_size <= 1)
-        return in_popul;
+    int needed_size = (this->popul_lim) ? this->popul_lim : in_popul_size * this->popul_frac;
 
-    for (int i = 0; i < this->popul_num;) {
-        Chromosome<T> fst_parent(in_popul[rand_r(&rand_seed) % in_popul_size]);
-        Chromosome<T> sec_parent(in_popul[rand_r(&rand_seed) % in_popul_size]);
+    if (in_popul_size <= 1) {
+        LOG_(error) << "Not enough species to breed new population: " << in_popul_size;
+        return in_popul;
+    }
+
+    for (int i = 0; i < needed_size;) {
+        Chromosome<T> fst_parent(in_popul[rand() % in_popul_size]);
+        Chromosome<T> sec_parent(in_popul[rand() % in_popul_size]);
         while (sec_parent == fst_parent)
-            sec_parent = in_popul[rand_r(&rand_seed) % in_popul_size];
+            sec_parent = in_popul[rand() % in_popul_size];
         Vec< Chromosome<T> > children(this->apply_crossover(fst_parent, sec_parent));
         int children_num = children.get_size();
 
         for (int j = 0; j < children_num; j++)
             if (out_popul.add_chromo(children[i])) {
                 i++;
-                if (i >= this->popul_num)
+                if (i >= needed_size)
                     break;
             }
     }
@@ -199,9 +214,11 @@ Population<T> PanmixiaBreeder<T>::breed_new_population(const Population<T>& in_p
 }
 
 template<typename T>
-InOutBreeder<T>::InOutBreeder(int init_pnum, InOutBreederType init_btype,
+InOutBreeder<T>::InOutBreeder(float init_pfrac, int init_plim, bool init_max_sf,
+                              InOutBreederType init_btype,
                               CrossoverType init_ctype, float init_cparam):
-        GeneticBreeder<T>(init_pnum, init_ctype, init_cparam), breeder_type(init_btype) {
+        GeneticBreeder<T>(init_pfrac, init_plim, init_max_sf, init_ctype, init_cparam),
+        breeder_type(init_btype) {
 }
 
 template<typename T>
@@ -218,7 +235,7 @@ Population<T> InOutBreeder<T>::breed_new_population(const Population<T>& in_popu
         return in_popul;
 
     for (int i = 0; i < this->popul_num; i++) {
-        Chromosome<T> fst_parent = in_popul[rand_r(time(0)) % in_popul_size];
+        Chromosome<T> fst_parent = in_popul[rand() % in_popul_size];
         Chromosome<T> sec_parent = find_match(in_popul, fst_parent);
         Vec< Chromosome<T> > children = apply_crossover(fst_parent, sec_parent);
         int children_num = children.get_size();

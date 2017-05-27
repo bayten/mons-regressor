@@ -1,5 +1,5 @@
 /* Copyright 2017 Baytekov Nikita */
-#include "../include/default_types.h"
+#include "default_types.h"
 
 #ifndef INCLUDE_GENETIC_TYPES_H_
 #define INCLUDE_GENETIC_TYPES_H_
@@ -42,7 +42,7 @@ class Population {
     Population() {}
     ~Population() {}
 
-    bool add_chromo(const Chromosome<T>& add_obj);
+    bool add_chromo(const Chromosome<T>& add_obj, bool allow_dups = false);
     bool del_chromo(int idx);
 
     const Vec< Chromosome<T> >& get_chromos() const { return chromo_vec; }
@@ -52,8 +52,10 @@ class Population {
     float get_avg_score() const;
     const Chromosome<T>& get_best_ind() const;
 
+    Population<T> slice(int begin, int end) const;
     Chromosome<T>& operator[] (int idx) { return chromo_vec[idx]; }
     const Chromosome<T>& operator[] (int idx) const { return chromo_vec[idx]; }
+    Population<T> operator+ (const Population<T>& popul_obj);
 
     template<typename S>
     friend std::ostream& operator<<(std::ostream& os, const Population<S>& popul);
@@ -90,13 +92,18 @@ Chromosome<T>& Chromosome<T>::operator=(const Chromosome<T>& chromo_obj) {
 template<typename T>
 bool Chromosome<T>::operator==(const Chromosome<T>& chromo_obj) const {
     int chromo_size = genes.get_size();
-    if (chromo_size != chromo_obj.get_size() || score != chromo_obj.get_score())
+    if (chromo_size != chromo_obj.get_size()) {
+        LOG_(warning) << "It is not correct to compare these chromosomes: different sizes!";
+        LOG_(warning) << (*this) << " and " << chromo_obj;
         return 0;
+    }
 
     Vec<T> obj_genes = chromo_obj.get_genes();
     for (int i = 0; i < chromo_size; i++)
-        if (obj_genes[i] != genes[i])
+        if (obj_genes[i] != genes[i]) {
+            // LOG_(trace) << "Chromosomes differ at " << i << " position.";
             return 0;
+        }
     return 1;
 }
 
@@ -110,16 +117,19 @@ std::ostream& operator<<(std::ostream& os, const Chromosome<S>& chromo) {
 }
 
 template<typename T>
-bool Population<T>::add_chromo(const Chromosome<T>& add_obj) {
+bool Population<T>::add_chromo(const Chromosome<T>& add_obj, bool allow_dups) {
     int chromo_num = chromo_vec.get_size();
-
+    // LOG_(trace) << "Adding " << add_obj << "...";
+    if(!allow_dups) {
     for (int i = 0; i < chromo_num; i++)
         if (add_obj == chromo_vec[i]) {
-            LOG_(trace) << "Chromosome is a duplicate - no sense to add it";
+            // LOG_(trace) << "Chromosomes " << add_obj << " and " << chromo_vec[i] << " are equal.";
             return 0;
         }
+    }
+    // LOG_(trace) << "No duplicates were found.";
     chromo_vec.append(add_obj);
-    LOG_(trace) << "New chromosome was added: " << (*this);
+    // LOG_(trace) << "New chromosome was added to population: " << (*this);
     return 1;
 }
 
@@ -165,6 +175,26 @@ Vec< Vec<T> > Population<T>::get_popul_data() const {
     for (int i = 0; i < chromo_len; i++)
         out_vec[i] = chromo_vec[i].get_genes();
     return out_vec;
+}
+
+template<typename T>
+Population<T> Population<T>::slice(int begin, int end) const {
+    return Population<T>(chromo_vec.slice(begin, end));
+}
+
+template<typename T>
+Population<T> Population<T>::operator+(const Population<T>& popul_obj) {
+    Population<T> out_popul;
+    int my_size = chromo_vec.get_size();
+    int obj_size = popul_obj.get_size();
+
+    for (int i = 0; i < my_size; i++)
+        out_popul.add_chromo(chromo_vec[i]);
+
+    for (int i = 0; i < obj_size; i++)
+        out_popul.add_chromo(chromo_vec[i]);
+
+    return out_popul;
 }
 
 template<typename S>

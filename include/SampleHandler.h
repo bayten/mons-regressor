@@ -1,49 +1,82 @@
 /* Copyright 2017 Baytekov Nikita */
-#include "../include/default_types.h"
-#include "../include/CollFamily.h"
-#include "../include/SampleSet.h"
+#include <type_traits>
+
+#include "default_types.h"
+#include "CollFamily.h"
+#include "SampleSet.h"
 #ifndef INCLUDE_SAMPLEHANDLER_H_
 #define INCLUDE_SAMPLEHANDLER_H_
 
-template<class T>
+template<typename S, typename T>  // S - type of features, T - type of answers
 class SampleHandler {
  public:
     SampleHandler() { LOG_(debug) << "Created SampleHandler instance successfully"; }
     ~SampleHandler() {}
 
-    SampleSet<T> make_samples(const Mat<T>& X, const Vec<int>& y, bool mix = true);
-    int make_train_and_valid(const SampleSet<T>& sample_set, \
-                             SampleSet<T>* train, \
-                             SampleSet<T>* valid);
+    SampleSet<S, T> make_samples(const Mat<S>& X, const Vec<T>& y, bool mix = true);
+    int make_train_and_valid(const SampleSet<S, T>& sample_set, \
+                             SampleSet<S, T>* train, \
+                             SampleSet<S, T>* valid);
 };
 
 
-template<class T>
-SampleSet<T> SampleHandler<T>::make_samples(const Mat<T>& X, const Vec<int>& y, bool mix) {
-    SampleSet<T> sample_set;
+template<typename S, typename T>
+SampleSet<S, T> SampleHandler<S, T>::make_samples(const Mat<S>& X, const Vec<T>& y, bool mix) {
+    LOG_(trace) << "Making samples...";
+    SampleSet<S, T> sample_set;
 
     sample_set.append(X, y);
-    if (mix)
-        sample_set.shuffle();
+    LOG_(trace) << "Sample Set was made.";
 
+    if (mix) {
+        sample_set.shuffle();
+        LOG_(trace) << "Samples were mixed";
+    }
     return sample_set;
 }
 
-template<class T>
-int SampleHandler<T>::make_train_and_valid(const SampleSet<T>& sample_set, \
-                                                SampleSet<T>* train, \
-                                                SampleSet<T>* valid) {
-    Mat<T> torn_X;
-    Vec<int> torn_y;
-    *train = sample_set;  // copying sample set to train
-    int class_num = train->get_size();  // doing this to have samples of every
-    for (int i = 0; i < class_num; i++) {  // class in validation set
-        int tear_num = 2*static_cast<int>(log(train->get_class(i).get_size(), 10))+1;
-        train->get_class(i).tearup(tear_num, &torn_X, &torn_y);
-        valid->append(torn_X, torn_y);
-    }
+template<typename S, typename T>
+int SampleHandler<S, T>::make_train_and_valid(const SampleSet<S, T>& sample_set, \
+                                                SampleSet<S, T>* train, \
+                                                SampleSet<S, T>* valid) {
+    LOG_(trace) << "Splitting sample set on train and valid sets...";
+    LOG_(trace) << "Input sample set:" << sample_set;
 
-    return class_num;
+    Mat<S> slice_X;
+    Vec<T> slice_y;
+
+    int group_num = sample_set.get_group_num();  // doing this to have samples of every
+    LOG_(trace) << "Group amount: " << group_num;
+
+
+    if (std::is_same<T, int>::value) {  // classification case
+        for (int i = 0; i < group_num; i++) {  // class in validation set
+            const GroupSamples<S, int>& curr_group = sample_set.get_group(i);
+            int curr_group_size = curr_group.get_size();
+            int slice_num = static_cast<int>(2 * log(curr_group_size)+1);
+
+            if (2*slice_num >= curr_group_size) {  // this case can occur in case of small train sets
+                int new_slice = std::max(static_cast<int>(0.4 * curr_group_size), 1);
+                LOG_(trace) << "Using size " << new_slice << " instead of " << slice_num;
+                slice_num = new_slice;
+            }
+
+            LOG_(trace) << "Taking " << slice_num << "/" << curr_group_size << ", group:" << i;
+            curr_group.slice_rand(slice_num, &slice_X, &slice_y);
+
+            valid->append(slice_X, slice_y);
+            Vec<int> tag_vec(curr_group_size - slice_num);
+            for (int j = 0; j < curr_group_size - slice_num; j++)
+                tag_vec[j] = i;
+
+            train->append(curr_group.get_objs().get_rect(slice_num, 0), tag_vec);
+        }
+    } else {
+        // int needed_size = sample_set.get_total_size()
+        // TODO: Implement
+        LOG_(error) << "Not implemented yet.";
+    }
+    return group_num;
 }
 
 #endif  // INCLUDE_SAMPLEHANDLER_H_

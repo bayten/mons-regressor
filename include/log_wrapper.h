@@ -15,8 +15,6 @@
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
-#define BOOST_LOG_DYN_LINK 1
-
 #define LOG_(x) BOOST_LOG_TRIVIAL(x)
 
 namespace logging = boost::log;
@@ -29,12 +27,9 @@ namespace keywords = boost::log::keywords;
 
 void init_logging() {
     logging::register_simple_formatter_factory<logging::trivial::severity_level, char>("Severity");
-    logging::add_file_log
-    (
-        keywords::file_name = "%Y-%m-%d.log",
-        keywords::auto_flush = true,
-        keywords::format = "(%TimeStamp%)[%Severity%]: %Message%"
-    );
+    logging::add_file_log(keywords::file_name = "%Y-%m-%d.log",
+                          keywords::auto_flush = true,
+                          keywords::format = "(%TimeStamp%)[%Severity%]: %Message%");
 
     logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
     logging::add_common_attributes();

@@ -3,199 +3,235 @@
 #define INCLUDE_SAMPLESET_H_
 
 #include <algorithm>
-#include "../include/default_types.h"
+#include <vector>
+#include "default_types.h"
 
-template<typename T>
-class ClassSamples {
+
+template<typename S, typename T>  // S - type of features, T - type of answers
+class GroupSamples {
  private:
-    Mat<T> objs;
-    int class_tag;
+    Mat<S> objs;
+    T group_tag;
 
  public:
-    ClassSamples() {}
-    ClassSamples(Mat<T> init_objs, int init_tag) :
-                objs(init_objs), class_tag(init_tag) {}
-    ~ClassSamples() {}
+    GroupSamples() : objs(0), group_tag() {}
+    GroupSamples(Mat<S> init_objs, T init_tag) :
+                objs(init_objs), group_tag(init_tag) {}
+    GroupSamples(Vec<S> init_vec, T init_tag) :
+                objs(Mat<S>(init_vec)), group_tag(init_tag) {}
+    ~GroupSamples() {}
 
-    void tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y);
+    void shuffle() { std::random_shuffle(&(objs[0]), &(objs[-1])+1); }
+    void slice_rand(int slice_num, Mat<S>* slice_x, Vec<T>* slice_y) const;
+    void append(const Vec<S>& X) { objs.hadd(X); }
+    void append(const Mat<S>& X);
+
     int get_size() const { return objs.get_sx(); }
-    int get_tag() const { return class_tag; }
+    T get_tag() const { return group_tag; }
+    const Mat<S>& get_objs() const { return objs; }
 
-    Vec<T>& operator[](int index) { return objs[index]; }
-    const Vec<T>& operator[](int index) const { return objs[index]; }
+    Vec<S>& operator[](int index) { return objs[index]; }
+    const Vec<S>& operator[](int index) const { return objs[index]; }
 
-    template<typename S>
-    friend std::ostream& operator<<(std::ostream& os, const ClassSamples<S>& cl_samps);
+    template<typename U, typename V>
+    friend std::ostream& operator<<(std::ostream& os, const GroupSamples<U, V>& gr_samps);
 };
 
-
-template<typename T>
+template<typename S, typename T>  // S - type of features, T - type of answers
 class SampleSet {
  private:
-    Vec< ClassSamples<T> > samples;
-    int total_size;
+    Vec< GroupSamples<S, T> > groups;
 
  public:
-    explicit SampleSet(int size = 0) : samples(size), total_size(size) {}  // default constructor
-    explicit SampleSet(Vec< ClassSamples<T> > init_samples);
-    explicit SampleSet(const SampleSet& copy_obj) :  // copy constructor
-                samples(copy_obj.samples),
-                total_size(copy_obj.get_total_size()) {}
+    explicit SampleSet(int size = 0) : groups(size) {}  // default constructor
+    explicit SampleSet(Vec< GroupSamples<S, T> > init_groups);
+    SampleSet(const SampleSet<S, T>& copy_obj) :  // copy constructor
+                groups(copy_obj.groups) {}
 
-    explicit SampleSet(SampleSet&& move_obj) :  // move constructor
-                samples(std::move(move_obj.get_samples())),
-                total_size(move_obj.get_total_size()) {}
+    explicit SampleSet(SampleSet<S, T>&& move_obj) :  // move constructor
+                groups(std::move(move_obj.get_groups())) {}
     ~SampleSet() {}
 
-    void append(Mat<T> X, Vec<int> y);
+    void append(const Mat<S>& X, const Vec<T>& y);
     void shuffle();
-    int get_class_num() const { return samples.get_size(); }
-    int get_total_size() const { return total_size; }
-    Vec< ClassSamples <T> >& get_samples() { return samples; }
-    const Vec< ClassSamples <T> >& get_samples() const { return samples; }
-    ClassSamples<T>& get_class(int index_tag);
-    SampleSet<T> get_anticlass(int index_tag);
-    bool delete_class(int index_tag);
+    int get_group_num() const { return groups.get_size(); }
+    int get_total_size() const;
+    Vec< GroupSamples<S, T> >& get_groups() { return groups; }
+    const Vec< GroupSamples<S, T> >& get_groups() const { return groups; }
+    const GroupSamples<S, T>& get_group(T index_tag) const;
+    SampleSet<S, T> get_antigroup(T index_tag) const;
+    bool delete_group(T index_tag);
 
-    SampleSet<T>& operator= (const SampleSet<T>& copy_obj);  // copy assignment
-    Vec<T>& operator[](int abs_index);
-    const Vec<T>& operator[](int abs_index) const;
+    SampleSet<S, T>& operator= (const SampleSet<S, T>& copy_obj);  // copy assignment
+    Vec<S>& operator[](int abs_index);
+    const Vec<S>& operator[](int abs_index) const;
 
-    template<typename S>
-    friend std::ostream& operator<<(std::ostream& os, const SampleSet<S>& sset);
+    template<typename U, typename V>
+    friend std::ostream& operator<<(std::ostream& os, const SampleSet<U, V>& sset);
 };
 
 
-template<typename T>
-void ClassSamples<T>::tearup(int tear_num, Mat<T>* torn_x, Vec<int>* torn_y) {
-    std::random_shuffle(&(objs[0]), &(objs[-1]));
-    *torn_x = objs.cutslice(0, tear_num);
-    *torn_y = Vec<int>(tear_num);
-    for (int j = 0; j < tear_num; j++)
-        (*torn_y)[j] = class_tag;
+template<typename S, typename T>
+void GroupSamples<S, T>::slice_rand(int slice_num, Mat<S>* slice_x, Vec<T>* slice_y) const {
+    std::vector<int>idx(objs.get_sx());
+    std::iota(std::begin(idx), std::end(idx), 0);
+    std::random_shuffle(std::begin(idx), std::end(idx));
+
+    *slice_x = Mat<S>(slice_num, objs.get_sy());
+    *slice_y = Vec<T>(slice_num);
+
+    for (int i = 0; i < slice_num; i++) {
+        (*slice_x)[i] = objs[i];
+        (*slice_y)[i] = group_tag;
+    }
 }
 
-template<typename S>
-std::ostream& operator<<(std::ostream& os, const ClassSamples<S>& cl_samps) {
-    int csamps_size = cl_samps.objs.get_sx();
-    os << "ClassSamples{" << csamps_size << ", tag:" << cl_samps.class_tag << "}";
+template<typename S, typename T>
+void GroupSamples<S, T>::append(const Mat<S>& X) {
+    int mat_sx = X.get_sx();
+
+    for (int i = 0; i < mat_sx; i++)
+        objs.append(X[i]);
+}
+
+template<typename U, typename V>
+std::ostream& operator<<(std::ostream& os, const GroupSamples<U, V>& gr_samps) {
+    int gsamps_size = gr_samps.objs.get_sx();
+    os << "GSamps{" << gsamps_size << ", tag:" << gr_samps.group_tag << "}:[" << gr_samps.objs;
     return os;
 }
 
-template<typename T>
-SampleSet<T>::SampleSet(Vec< ClassSamples<T> > init_samples) :
-        samples(init_samples), total_size(0) {
-    int class_num = samples.get_size();
-    for (int i = 0; i < class_num; i++)
-        total_size += samples[i].get_size();
-}
+template<typename S, typename T>
+SampleSet<S, T>::SampleSet(Vec< GroupSamples<S, T> > init_groups) :
+        groups(init_groups) {}
 
-template<typename T>
-void SampleSet<T>::append(Mat<T> X, Vec<int> y) {
+template<typename S, typename T>
+void SampleSet<S, T>::append(const Mat<S>& X, const Vec<T>& y) {
     int obj_num = y.get_size();
-    int samples_size = samples.get_size();
     int i = 0;
 
-    if (!samples_size) {  // if appending for the first time...
-        samples.append(ClassSamples<T>(X[0], y[0]));
+    if (!groups.get_size()) {  // if appending for the first time...
+        // LOG_(trace) << "Appending for the first time...";
+        groups.append(GroupSamples<S, T>(X[0], y[0]));
         i++;
     }
 
     for (; i < obj_num; i++) {
         bool was_found = 0;
 
-        for (int j = 0; j < samples_size; j++) {  // searching within existing classes
-            if (samples[j].class_tag == y[i]) {
-                samples[j].objs.append(X[i]);
+        for (int j = 0; j < groups.get_size(); j++) {  // searching within existing groupes
+            if (groups[j].get_tag() == y[i]) {
+                groups[j].append(X[i]);
                 was_found = 1;
                 break;
             }
         }
-        if (!was_found) {  // otherwise adding new class container =)
-            samples.append(ClassSamples<T>(X[i], y[i]));
-        }
+        if (!was_found)  // otherwise adding new group container =)
+            groups.append(GroupSamples<S, T>(X[i], y[i]));
     }
+    // LOG_(trace) << "Matrix of objects was appended: " << (*this);
 }
 
-template<typename T>
-void SampleSet<T>::shuffle() {
-    int samples_size = samples.get_size();
-    for (int i = 0; i < samples_size; i++) {
-        std::random_shuffle(&(samples[i].obj[0]), &(samples[i].obj[-1]));
-    }
+template<typename S, typename T>
+void SampleSet<S, T>::shuffle() {
+    int groups_size = groups.get_size();
+    for (int i = 0; i < groups_size; i++)
+        groups[i].shuffle();
 }
 
-template<typename T>
-ClassSamples<T>& SampleSet<T>::get_class(int index_tag) {
-    int samples_size = samples.get_size();
-    for (int i = 0; i < samples_size; i++)
-        if (samples[i].get_tag() == index_tag)
-            return samples[i];
+template<typename S, typename T>
+int SampleSet<S, T>::get_total_size() const {
+    int groups_num = groups.get_size();
+    int total_size = 0;
+    for (int i = 0; i < groups_num; i++)
+        total_size += groups[i].get_size();
 
-    return samples[0];
+    return total_size;
 }
 
-template<typename T>
-SampleSet<T> SampleSet<T>::get_anticlass(int index_tag) {
-    SampleSet<T> new_sample_set = *this;
-    new_sample_set.delete_class(index_tag);
+template<typename S, typename T>
+const GroupSamples<S, T>& SampleSet<S, T>::get_group(T index_tag) const {
+    int groups_size = groups.get_size();
+    for (int i = 0; i < groups_size; i++)
+        if (groups[i].get_tag() == index_tag)
+            return groups[i];
+
+    return groups[0];
+}
+
+template<typename S, typename T>
+SampleSet<S, T> SampleSet<S, T>::get_antigroup(T index_tag) const {
+    SampleSet<S, T> new_sample_set(*this);
+    new_sample_set.delete_group(index_tag);
     return new_sample_set;
 }
 
-template<typename T>
-bool SampleSet<T>::delete_class(int index_tag) {
-    int samples_size = samples.get_size();
-    for (int i = 0; i < samples_size; i++) {
-        if (samples[i].get_tag() == index_tag) {
-            samples.erase(i);
-            return;
+template<typename S, typename T>
+bool SampleSet<S, T>::delete_group(T index_tag) {
+    int groups_size = groups.get_size();
+    for (int i = 0; i < groups_size; i++) {
+        if (groups[i].get_tag() == index_tag) {
+            groups.erase(i);
+            return 1;
         }
     }
-    return;
+    LOG_(warning) << "No group samples with tag " << index_tag << " were found.";
+    return 0;
 }
 
-template<typename T>
-Vec<T>& SampleSet<T>::operator[](int abs_index) {
-    int samples_num = samples.get_size();
-    for (int i = 0; i < samples_num; i++) {
-        if (abs_index < samples[i].get_size())
-            return samples[i][abs_index];
+template<typename S, typename T>
+Vec<S>& SampleSet<S, T>::operator[](int abs_index) {
+    int groups_num = groups.get_size();
+    for (int i = 0; i < groups_num; i++) {
+        if (abs_index < groups[i].get_size())
+            return groups[i][abs_index];
 
-        abs_index -= samples[i].get_size();
+        abs_index -= groups[i].get_size();
     }
 
-    return samples[-1][-1];
+    return groups[-1][-1];
 }
 
-template<typename T>
-const Vec<T>& SampleSet<T>::operator[](int abs_index) const {
-    int samples_num = samples.get_size();
-    for (int i = 0; i < samples_num; i++) {
-        if (abs_index < samples[i].get_size())
-            return samples[i][abs_index];
+template<typename S, typename T>
+const Vec<S>& SampleSet<S, T>::operator[](int abs_index) const {
+    int groups_num = groups.get_size();
+    for (int i = 0; i < groups_num; i++) {
+        if (abs_index < groups[i].get_size())
+            return groups[i][abs_index];
 
-        abs_index -= samples[i].get_size();
+        abs_index -= groups[i].get_size();
     }
 
-    return samples[-1][-1];
+    return groups[-1][-1];
 }
 
-template<typename T>
-SampleSet<T>& SampleSet<T>::operator= (const SampleSet<T>& copy_obj) {
-    samples = copy_obj.get_samples();
-    total_size = copy_obj.get_total_size();
+template<typename S, typename T>
+SampleSet<S, T>& SampleSet<S, T>::operator= (const SampleSet<S, T>& copy_obj) {
+    groups = copy_obj.get_groups();
     return (*this);
 }
 
-
-template<typename S>
-std::ostream& operator<<(std::ostream& os, const SampleSet<S>& sset) {
+template<typename U, typename V>
+std::ostream& operator<<(std::ostream& os, const SampleSet<U, V>& sset) {
     std::stringstream buffer;
-    int sset_size = sset.samples.get_size();
-    buffer << "SampleSet{" << sset_size << "; " << sset.total_size << "}:[";
-    buffer << sset.samples[0];
-    for (int i = 1; i < sset_size; i++)
-        buffer << ", " << sset.samples[i];
+    int sset_size = sset.groups.get_size();
+    int total_size = sset.get_total_size();
+    buffer << "SampleSet{" << total_size << "; " << sset_size << "}:[";
+
+    if (sset_size < 1) {
+        buffer << "nullptr";
+    } else if (sset_size < 10) {
+        buffer << sset.groups[0];
+        for (int i = 1; i < sset_size; i++)
+            buffer << ", " << sset.groups[i] << std::endl;
+    } else {
+        buffer << sset.groups[0] << "," << std::endl;
+        buffer << sset.groups[1] << "," << std::endl;
+        buffer << sset.groups[2] << "," << std::endl << "..., " << std::endl;
+        buffer << sset.groups[sset_size-3] << "," << std::endl;
+        buffer << sset.groups[sset_size-2] << "," << std::endl;
+        buffer << sset.groups[sset_size-1] << "," << std::endl;
+    }
     buffer << "]";
     os << buffer.str();
     return os;

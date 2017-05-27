@@ -5,7 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include "../include/log_wrapper.h"
+#include "log_wrapper.h"
 
 
 template<typename T>
@@ -18,6 +18,7 @@ class Vec {
  public:
     explicit Vec(int size = 0);  // default constructor
     Vec(int size, T init_vals[]);  // -//-
+    Vec(int size, const std::vector<T>& init_vals);
     Vec(const Vec<T>& vec_obj);  // copy constructor
     explicit Vec(Vec<T>&& vec_obj);  // move constructor
     ~Vec();  // destructor
@@ -26,13 +27,14 @@ class Vec {
     Vec<T>& operator=(Vec<T>&& vec_obj);  // move assignment
     T& operator[](int index);
     const T& operator[](int index) const;
+    bool operator==(const Vec<T>& vec_obj) const;
 
     template<typename S>
     friend std::ostream& operator<<(std::ostream& os, const Vec<S>& vec);
 
     void append(const T& apnd_obj, int index = -1);
     bool erase(int index = -1);
-    Vec<T> cutslice(int begin, int end);
+    Vec<T> slice(int begin, int end) const;
     Vec<T> sort() const;
     Vec<int> sort_indices() const;
     int get_size() const {
@@ -57,8 +59,8 @@ class Mat {
     Mat<T>& hadd(const Vec<T>& h_obj, int index = -1);
     Mat<T>& vadd(const Vec<T>& v_obj, int index = -1);
 
-    Mat<T> get_rect(int x1, int y1, int x2 = -1, int y2 = -1);
-    Vec<T> get_col(int idx = -1);
+    Mat<T> get_rect(int x1, int y1, int x2 = -1, int y2 = -1) const;
+    Vec<T> get_col(int idx = -1) const;
 
     Mat<T>& operator=(const Mat<T>& mat_obj);
     Vec<T>& operator[](int index);
@@ -86,6 +88,20 @@ Vec<T>::Vec(int size) {
 
 template<typename T>
 Vec<T>::Vec(int size, T init_vals[]) {
+    sz = size;
+    real_sz = size;
+
+    if (sz > 0) {
+        data = new T[sz];
+        for (int i = 0; i < sz; i++)
+            data[i] = init_vals[i];
+    } else {
+        data = nullptr;
+    }
+}
+
+template<typename T>
+Vec<T>::Vec(int size, const std::vector<T>& init_vals) {
     sz = size;
     real_sz = size;
 
@@ -174,6 +190,17 @@ const T& Vec<T>::operator[](int index) const {
     return data[index];
 }
 
+template<typename T>
+bool Vec<T>::operator==(const Vec<T>& vec_obj) const {
+    if (vec_obj.get_size() != sz)
+        return 0;
+
+    for (int i = 0; i < sz; i++)
+        if (vec_obj[i] != data[i])
+            return 0;
+    return 1;
+}
+
 template<typename S>
 std::ostream& operator<<(std::ostream& os, const Vec<S>& vec) {
     std::stringstream buffer;
@@ -181,7 +208,7 @@ std::ostream& operator<<(std::ostream& os, const Vec<S>& vec) {
 
     if (vec.data == nullptr) {
         buffer << "nullptr";
-    } else if (vec.sz < 10) {
+    } else if (vec.sz < 17) {
         buffer << vec.data[0];
         for (int i = 1; i < vec.sz; i++)
             buffer << ", " << vec.data[i];
@@ -199,7 +226,7 @@ void Vec<T>::append(const T& apnd_obj, int index) {
     if (index == -1)
         index = sz;
 
-    // LOG_(trace) << "Appending " << apnd_obj << " on " << index << "position to " << (*this);
+    // LOG_(trace) << "Appending " << apnd_obj << " on " << index << " position to " << (*this);
 
     if (data == nullptr || real_sz <= 0) {
         // LOG_(trace) << "Zero-size vector => creating new one";
@@ -252,21 +279,17 @@ bool Vec<T>::erase(int index) {
 }
 
 template<typename T>
-Vec<T> Vec<T>::cutslice(int begin, int end) {
-    LOG_(trace) << "Cutting slice from " << (*this) << "...";
+Vec<T> Vec<T>::slice(int begin, int end) const {
+    LOG_(trace) << "Getting slice from " << (*this) << "...";
     int slice_sz = end+1-begin;
-    Vec<T> carved_slice(slice_sz);
+    Vec<T> slice_vec(slice_sz);
 
     for (int i = 0; i < slice_sz; i++)
-        carved_slice[i] = data[begin+i];
-    for (int i = end; i < sz; i++)
-        data[i-slice_sz] = data[i];
-
+        slice_vec[i] = data[begin+i];
     sz = sz-slice_sz;
 
-    LOG_(trace) << "Residue: " << (*this);
-    LOG_(trace) << "Carved slice: " << carved_slice;
-    return carved_slice;
+    LOG_(trace) << "Slice: " << slice_vec;
+    return slice_vec;
 }
 
 template<typename T>
@@ -278,7 +301,7 @@ Vec<T> Vec<T>::sort() const {
     std::sort(new_data, new_data+sz);
 
     Vec<T> out_vec(sz, new_data);
-    LOG_(trace) << "Sorted vec: " << out_vec;
+    // LOG_(trace) << "Sorted vec: " << out_vec;
     return out_vec;
 }
 
@@ -290,7 +313,7 @@ Vec<int> Vec<T>::sort_indices() const {
               [this](int i1, int i2) { return this->data[i1] < this->data[i2]; });
 
     Vec<int> out_vec(sz, idx);
-    LOG_(trace) << "Vec of sorted indices: " << out_vec;
+    // LOG_(trace) << "Vec of sorted indices: " << out_vec;
     return out_vec;
 }
 
@@ -353,14 +376,17 @@ Mat<T>& Mat<T>::vadd(const Vec<T>& v_obj, int index) {
 }
 
 template<typename T>
-Mat<T> Mat<T>::get_rect(int x1, int y1, int x2, int y2) {
-    if(x2 == -1)
+Mat<T> Mat<T>::get_rect(int x1, int y1, int x2, int y2) const {
+    if (x2 == -1)
         x2 = sx;
-    if(y2 == -1)
+    if (y2 == -1)
         y2 = sy;
-
     // LOG_(trace) << "Getting rect(" << x1 << ", " << y1 << ", " << x2 << ", " << y2 << ")";
-
+    if (x1 >= x2 || y1 >= y2) {
+        LOG_(error) << "Trying to create matrix with zero/negative sides!";
+        LOG_(error) << "Bad parameters(" << x1 << "," << y1 << "," << x2 << "," << y2 << ")";
+        return Mat<T>();
+    }
     Mat<T> out_mat(x2-x1, y2-y1);
     for (int i = x1; i < x2; i++)
         for (int j = y1; j < y2; j++)
@@ -370,8 +396,8 @@ Mat<T> Mat<T>::get_rect(int x1, int y1, int x2, int y2) {
 }
 
 template<typename T>
-Vec<T> Mat<T>::get_col(int idx) {
-    if(idx == -1)
+Vec<T> Mat<T>::get_col(int idx) const {
+    if (idx == -1)
         idx = sy-1;
     Vec<T> out_vec(sx);
     for (int i = 0; i < sx; i++)
@@ -421,7 +447,9 @@ const Vec<T>& Mat<T>::operator[](int index) const {
 template<typename S>
 std::ostream& operator<<(std::ostream& os, const Mat<S>& mat) {
     os << "Mat(" << mat.sx << "," << mat.sy << "):[" << std::endl;
-    if(mat.sx < 10) {
+    if (mat.sx < 1) {
+        os << "nullptr" << std::endl;
+    } else if (mat.sx < 17) {
         for (int i = 0; i < mat.sx; i++)
             os << mat.data[i] << "," << std::endl;
     } else {

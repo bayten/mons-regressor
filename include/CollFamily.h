@@ -3,7 +3,7 @@
 #define INCLUDE_COLLFAMILY_H_
 
 #include <algorithm>
-#include "../include/default_types.h"
+#include "default_types.h"
 
 template<typename T>  // type of features
 class ElClass {
@@ -17,12 +17,12 @@ class ElClass {
 
     ~ElClass() {}
 
-    bool apply_to_object(const Vec<T>& object);
+    bool apply_to_object(const Vec<T>& object) const;
     int get_size() const { return cols.get_size(); }
-    const Vec<int> get_cols() const { return cols; }
-    const Vec<T> get_vals() const { return vals; }
+    const Vec<int>& get_cols() const { return cols; }
+    const Vec<T>& get_vals() const { return vals; }
 
-    bool operator==(const ElClass<T>& comp_obj);
+    bool operator==(const ElClass<T>& comp_obj) const;
 
     template<typename S>
     friend std::ostream& operator<<(std::ostream& os, const ElClass<S>& ec);
@@ -40,12 +40,12 @@ class ElColl {
 
     bool add(ElClass<T> ec_obj);  // checks for similar elementary classifiers
 
-    Vec<bool> apply_to_object(const Vec<T>& object);
-    bool vote_func(const Vec<T>& fst_obj, const Vec<T>& sec_obj);
+    Vec<bool> apply_to_object(const Vec<T>& object) const;
+    bool vote_func(const Vec<T>& fst_obj, const Vec<T>& sec_obj) const;
 
     int get_size() const { return ecs.get_size(); }
 
-    bool operator==(const ElColl<T>& comp_obj);
+    bool operator==(const ElColl<T>& comp_obj) const;
     ElClass<T>& operator[](int idx) { return ecs[idx]; }
     const ElClass<T>& operator[](int idx) const { return ecs[idx]; }
 
@@ -65,6 +65,9 @@ class CollFamily {
     Vec<bool> add(const Vec<ElColl<T> >& new_colls);  // ...
 
     int get_size() const { return colls.get_size(); }
+
+    ElColl<T>& operator[](int idx) { return colls[idx]; }
+    const ElColl<T>& operator[](int idx) const { return colls[idx]; }
 
     template<typename S>
     friend std::ostream& operator<<(std::ostream& os, const CollFamily<S>& cfam);
@@ -89,27 +92,29 @@ ElClass<T>::ElClass(int rank, int init_cols[], T init_vals[]):
 }
 
 template<typename T>
-bool ElClass<T>::apply_to_object(const Vec<T>& object) {
+bool ElClass<T>::apply_to_object(const Vec<T>& object) const {
     int ec_rank = cols.get_size();
     for (int i = 0; i < ec_rank; i++)
-        if (object[cols[i]] == vals[i])
+        if (object[cols[i]] != vals[i])
             return 0;
     return 1;
 }
 
 template<typename T>
-bool ElClass<T>::operator==(const ElClass<T>& comp_obj) {
+bool ElClass<T>::operator==(const ElClass<T>& comp_obj) const {
     int my_size = cols.get_size();
     if (my_size != comp_obj.get_size())
         return 0;
-    cols = cols.sort();
-    vals = vals.sort();
-    Vec<int> cols2 = comp_obj.get_cols().sort();
-    Vec<T> vals2 = comp_obj.get_vals().sort();
+
+    const Vec<int>& cols2 = comp_obj.get_cols();
+    const Vec<T>& vals2 = comp_obj.get_vals();
+
+    Vec<int> col_inds = cols.sort_indices();
+    Vec<int> col_inds2 = comp_obj.get_cols().sort_indices();
 
     for (int i = 0; i < my_size; i++) {
-        if (cols[i] != cols2[i] ||
-            vals[i] != vals2[i])
+        if (cols[col_inds[i]] != cols2[col_inds[i]] ||
+            vals[col_inds[i]] != vals2[col_inds[i]])
             return 0;
     }
     return 1;
@@ -145,7 +150,7 @@ bool ElColl<T>::add(ElClass<T> ec_obj) {
 }
 
 template<typename T>
-Vec<bool> ElColl<T>::apply_to_object(const Vec<T>& object) {
+Vec<bool> ElColl<T>::apply_to_object(const Vec<T>& object) const {
     int ec_num = ecs.get_size();
     Vec<bool> bin_coll(ec_num);
 
@@ -156,7 +161,23 @@ Vec<bool> ElColl<T>::apply_to_object(const Vec<T>& object) {
 }
 
 template<typename T>
-bool ElColl<T>::operator==(const ElColl<T>& comp_obj) {
+bool ElColl<T>::vote_func(const Vec<T>& fst_obj, const Vec<T>& sec_obj) const {
+    Vec<bool> fst_coll_vec = apply_to_object(fst_obj);
+    Vec<bool> sec_coll_vec = apply_to_object(sec_obj);
+    int fst_sz = fst_coll_vec.get_size();
+    if (fst_sz != sec_coll_vec.get_size()) {
+        LOG_(warning) << "In vote function trying to compare different vectors!";
+        return 0;
+    }
+
+    for (int i = 0; i < fst_sz; i++)
+        if (fst_coll_vec[i] < sec_coll_vec[i])
+            return 0;
+    return 1;
+}
+
+template<typename T>
+bool ElColl<T>::operator==(const ElColl<T>& comp_obj) const {
     int ec_num = ecs.get_size();
     if (ec_num != comp_obj.get_size())
         return 0;
@@ -180,10 +201,20 @@ template<typename S>
 std::ostream& operator<<(std::ostream& os, const ElColl<S>& el_coll) {
     std::stringstream buffer;
     int el_coll_size = el_coll.ecs.get_size();
-    buffer << "ElColl<" << el_coll_size << ">:[";
-    buffer << el_coll.ecs[0];
-    for (int i = 1; i < el_coll_size; i++)
-        buffer << ", " << el_coll.ecs[i];
+    buffer << "ElColl<" << el_coll_size << ">:[" << std::endl;
+    if (el_coll_size < 1) {
+        buffer << "nullptr" << std::endl;
+    } else if (el_coll_size < 10) {
+        for (int i = 0; i < el_coll_size; i++)
+            buffer << el_coll.ecs[i] << "," << std::endl;
+    } else {
+        buffer << el_coll.ecs[0] << "," << std::endl;
+        buffer << el_coll.ecs[1] << "," << std::endl;
+        buffer << el_coll.ecs[2] << "," << std::endl << "...," << std::endl;
+        buffer << el_coll.ecs[el_coll_size-3] << "," << std::endl;
+        buffer << el_coll.ecs[el_coll_size-2] << "," << std::endl;
+        buffer << el_coll.ecs[el_coll_size-1] << "," << std::endl;
+    }
     buffer << "]";
     os << buffer.str();
     return os;

@@ -1,10 +1,10 @@
 /* Copyright 2017 Baytekov Nikita */
 
-#include "../include/default_types.h"
-#include "../include/CollFamily.h"
-#include "../include/SampleHandler.h"
-#include "../include/LBBuilder.h"
-#include "../include/GeneticDualizer.h"
+#include "default_types.h"
+#include "CollFamily.h"
+#include "SampleHandler.h"
+#include "LBBuilder.h"
+#include "GeneticDualizer.h"
 
 #ifndef INCLUDE_MONSCLASSIFIER_H_
 #define INCLUDE_MONSCLASSIFIER_H_
@@ -12,7 +12,7 @@
 template<typename S, typename T>
 class MONSClassifier {
     GeneticDualizer<S, T> genetic_dualizer;
-    LBBuilder<S> lb_builder;
+    LBBuilder<S>* lb_builder;
     SampleHandler<S> sample_handler;
 
     Vec< CollFamily<S> > coll_sets;
@@ -23,9 +23,9 @@ class MONSClassifier {
 
  public:
     explicit MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
-                            LBBuilder<S> init_lb_builder = RandomLBBuilder<S>(),
+                            LBBuilder<S>* init_lb_builder = new RandomLBBuilder<S>(),
                             int init_miter = 1000, float init_eps = 0.0001);
-    ~MONSClassifier() { LOG_(debug) << "MONSClassifier was destroyed."; }
+    ~MONSClassifier();
 
     void fit(const Mat<S>& X, const Vec<int>& y);
     Vec<int> predict(const Mat<S>& X);
@@ -41,7 +41,7 @@ class MONSClassifier {
 
 template<typename S, typename T>
 MONSClassifier<S, T>::MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
-                                     LBBuilder<S> init_lb_builder,
+                                     LBBuilder<S>* init_lb_builder,
                                      int init_miter, float init_eps):
         genetic_dualizer(init_gen_dual),
         lb_builder(init_lb_builder),
@@ -49,7 +49,14 @@ MONSClassifier<S, T>::MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
         coll_sets(),
         max_iter(init_miter),
         eps(init_eps) {
+    srand(time(0));
     LOG_(debug) << "MONSClassifier instance was created (by usual constructor).";
+}
+
+template<typename S, typename T>
+MONSClassifier<S, T>::~MONSClassifier() {
+    delete lb_builder;
+    LOG_(debug) << "MONSClassifier was destroyed.";
 }
 
 template<typename S, typename T>
@@ -59,26 +66,31 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
     SampleSet<S> train, valid;
     sample_handler.make_train_and_valid(train_set, &train, &valid);
     int class_num = train_set.get_class_num();
+    coll_sets = Vec<CollFamily<S>>(class_num);
+    LOG_(trace) << "Train set: " << train;
+    LOG_(trace) << "Valid set: " << valid;
 
     Vec<float> avg_margins(valid.get_total_size());
 
-    LOG_(trace) << "Starting main fitting loop...";
+    LOG_(trace) << "Starting main fitting loop(class num: " << class_num << ")...";
+
     for (int i = 1; i <= max_iter; i++) {
         LOG_(trace) << "Loop iteration: " << i;
         for (int k = 0; k < class_num; k++) {
             LOG_(trace) << "For class: " << k;
-            LOG_(trace) << "Building local basis...";
-            ElColl<S> local_basis = lb_builder.build_lb(train, k);
+            ElColl<S> local_basis = lb_builder->build_lb(train, k);
+            LOG_(trace) << "Local basis: " << local_basis;
 
             LOG_(trace) << "Processing Genetic Algorithm...";
             genetic_dualizer.set_init_data(train, local_basis, k);
             Vec< Vec<T> > encoded_colls = genetic_dualizer.execute_ga();
             Vec< ElColl<S> > new_colls = genetic_dualizer.decode_collections(encoded_colls);
 
-            LOG_(trace) << "Adding new collections...";
+            LOG_(trace) << "Adding new collections...:" << new_colls;
             coll_sets[k].add(new_colls);
+            LOG_(trace) << "New collections were successfully added.";
         }
-        if (check_margin(valid, &avg_margins, i)) {
+        if (check_margin(valid, train, &avg_margins, i)) {
             LOG_(trace) << "Main loop was stopped because of margins' condition";
             break;
         }
@@ -120,15 +132,16 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S>& valid,
     Vec<float> new_margins(total_size);
 
     for (int i = 0; i < class_num; i++) {
-        ClassSamples<S>& class_samples = valid.get_class(i);
+        const ClassSamples<S>& class_samples = valid.get_class(i);
         int class_samples_size = class_samples.get_size();
         for (int j = 0; j < class_samples_size; j++) {
             float my_estim = 0.0, max_estim = 0.0;
             for (int k = 0; k < class_num; k++) {
+                float k_estim = get_class_estim(valid, class_samples[j], k);
                 if (k == i)
-                    my_estim = get_class_estim(class_samples[j], k);
-                else if (max_estim < get_class_estim(class_samples[j], k))
-                    max_estim = get_class_estim(class_samples[j], k);
+                    my_estim = k_estim;
+                else if (max_estim < k_estim)
+                    max_estim = k_estim;
             }
             curr_margin = my_estim - max_estim;
             new_margins[curr_idx] = ((*avg_margins)[curr_idx]*(curr_iter-1)+curr_margin)/curr_iter;
@@ -145,7 +158,7 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S>& valid,
 template<typename S, typename T>
 float MONSClassifier<S, T>::get_class_estim(const SampleSet<S>& train,
                                             const Vec<S>& x, int class_tag) {
-    ClassSamples<S>& needed_class = train.get_class(class_tag);
+    const ClassSamples<S>& needed_class = train.get_class(class_tag);
     CollFamily<S>& needed_family = coll_sets[class_tag];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();
@@ -153,7 +166,7 @@ float MONSClassifier<S, T>::get_class_estim(const SampleSet<S>& train,
     float estim_sum = 0.0;
     for (int i = 0; i < class_size; i++)
         for (int j = 0; j < coll_num; j++)
-            estim_sum += needed_family.vote_func(x, needed_class[i]);
+            estim_sum += needed_family[j].vote_func(x, needed_class[i]);
     return estim_sum/class_size/coll_num;
 }
 

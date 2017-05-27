@@ -3,8 +3,8 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-#include "../include/default_types.h"
-#include "../include/log_wrapper.h"
+#include "default_types.h"
+#include "log_wrapper.h"
 
 #ifndef INCLUDE_DATASETREADER_H_
 #define INCLUDE_DATASETREADER_H_
@@ -31,15 +31,15 @@ Mat<T> DatasetReader<T>::read_csv(const char path[], char sep) {
     Mat<T> out_mat(vals);
 
     // LOG_(trace) << "Out matrix" << out_mat;
-    while(file.good()) {
+    while (file.good()) {
         std::getline(file, entry_val);
         if (entry_val.size() > 0)
             out_mat.hadd(read_vals(entry_val, sep));
         else
-            LOG_(warning) << "Empty string was discovered during file read.";
+            LOG_(warning) << "Empty string was discovered during file loading.";
     }
 
-    LOG_(info) << "Dataset \"" << path << "\" was successfully read.";
+    LOG_(info) << "Dataset \"" << path << "\" was successfully loaded.";
     return out_mat;
 }
 
@@ -55,6 +55,17 @@ Vec<T> DatasetReader<T>::read_vals(std::string entry_str, char sep) {
     std::string token;
     while (std::getline(ss, token, sep).good()) {
         // LOG_(trace) << "New token:\"" << token << "\"";
+        std::stringstream token_ss;
+        token_ss.str(token);
+        token_ss >> add_val;
+        // LOG_(trace) << "Read value: " << add_val;
+        // LOG_(trace) << out_vec;
+        out_vec.append(add_val);
+        // LOG_(trace) << "Extended vec: " << out_vec;
+    }
+    std::getline(ss, token);  // reading residue
+    // LOG_(trace) << "Residue token:\"" << token << "\"";
+    if (token.size()) {
         std::stringstream token_ss;
         token_ss.str(token);
         token_ss >> add_val;
