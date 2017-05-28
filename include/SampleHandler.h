@@ -41,6 +41,8 @@ int SampleHandler<S, T>::make_train_and_valid(const SampleSet<S, T>& sample_set,
                                                 SampleSet<S, T>* valid) {
     LOG_(trace) << "Splitting sample set on train and valid sets...";
     LOG_(trace) << "Input sample set:" << sample_set;
+    (*train) = SampleSet<S, T>();
+    (*valid) = SampleSet<S, T>();
 
     Mat<S> slice_X;
     Vec<T> slice_y;

@@ -13,19 +13,21 @@ class GeneticMerger {
     bool is_max_sf;
 
  public:
-    GeneticMerger(bool init_max_sf = true) : is_max_sf(init_max_sf) {}
-    GeneticMerger(const GeneticMerger<T>& gm_obj) {}
+    GeneticMerger(bool init_max_sf = true) : is_max_sf((init_max_sf) ? 1 : 0) {}
+    GeneticMerger(const GeneticMerger<T>& gm_obj) : is_max_sf(gm_obj.is_max_sf) {}
     virtual ~GeneticMerger() {}
 
     virtual Population<T> merge_populations(const Population<T>& parents,
                                             const Population<T>& children) = 0;
+
+    bool& show_max_sf() { return is_max_sf; }
 };
 
 template<typename T>
 class SequentialMerger : public GeneticMerger<T> {
  public:
     SequentialMerger(bool init_max_sf = true) : GeneticMerger<T>(init_max_sf) {}
-    SequentialMerger(const GeneticMerger<T>& gm_obj) {}
+    SequentialMerger(const GeneticMerger<T>& gm_obj) : GeneticMerger<T>(gm_obj) {}
     virtual ~SequentialMerger() {}
 
     virtual Population<T> merge_populations(const Population<T>& parents,
@@ -33,26 +35,27 @@ class SequentialMerger : public GeneticMerger<T> {
 };
 
 
-
 template<typename T>
 Population<T> SequentialMerger<T>::merge_populations(const Population<T>& parents,
                                                      const Population<T>& children) {
     Population<T> out_popul = parents;
-
     int parents_num = parents.get_size();
     int children_num = children.get_size();
 
     Vec<float> scores(parents_num);
     for (int i = 0; i < parents_num; i++)
         scores[i] = parents[i].get_score();
+
     for (int i = 0; i < children_num; i++) {
+        if (!out_popul.check_chromo(children[i]))
+            continue;
+
         Vec<int> replace_idx;
         float my_score = children[i].get_score();
 
         for (int j = 0; j < parents_num; j++)
-            if (this->is_max_sf == (scores[j] < my_score)) {
+            if ((scores[j] < my_score) == this->is_max_sf)
                 replace_idx.append(j);
-            }
 
         LOG_(trace) << "Final candidates to be replaced:" << replace_idx;
         if (!replace_idx.get_size())

@@ -74,7 +74,7 @@ template<typename T>
 GeneticSelector<T>::GeneticSelector(float init_pfrac, int init_plim, bool init_max_sf):
         popul_frac(init_pfrac),
         popul_lim(init_plim),
-        is_max_sf(init_max_sf) {
+        is_max_sf((init_max_sf) ? 1 : 0) {
     if (popul_frac && popul_lim)
         LOG_(warning) << "Both selector limit options are set. Using popul_frac by default.";
 }
@@ -83,7 +83,7 @@ template<typename T>
 GeneticSelector<T>::GeneticSelector(const GeneticSelector<T>& gs_obj):
         popul_frac(gs_obj.popul_frac),
         popul_lim(gs_obj.popul_lim),
-        is_max_sf(gs_obj.is_max_sf) {
+        is_max_sf((gs_obj.is_max_sf) ? 1 : 0) {
 }
 
 template<typename T>
@@ -153,6 +153,7 @@ Population<T> RouletteSelector<T>::select_population(const Population<T>& in_pop
         probs[i] /= total_score;
     LOG_(trace) << "Probability vector: " << probs;
 
+    int fail_iter = 10;
     for (int i = 0; i < needed_size; i++) {
         float rand_frac = static_cast<float>(rand()) / (RAND_MAX);
         LOG_(trace) << "Rand fraction: " << rand_frac;
@@ -168,6 +169,8 @@ Population<T> RouletteSelector<T>::select_population(const Population<T>& in_pop
         if (!out_popul.add_chromo(in_popul[chromo_idx])) {
             LOG_(trace) << "This chromosome was already chosen...";
             i--;
+            if (!(--fail_iter))
+                break;
         }
     }
     return out_popul;

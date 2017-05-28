@@ -12,18 +12,18 @@
 template<typename S, typename T>
 class MONSClassifier {
     GeneticDualizer<S, T> genetic_dualizer;
-    LBBuilder<S>* lb_builder;
-    SampleHandler<S> sample_handler;
+    LBBuilder<S, int>* lb_builder;
+    SampleHandler<S, int> sample_handler;
 
     Vec< CollFamily<S> > coll_sets;
-    SampleSet<S> train_set;
+    SampleSet<S, int> train_set;
 
     int max_iter;
     float eps;
 
  public:
     explicit MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
-                            LBBuilder<S>* init_lb_builder = new RandomLBBuilder<S>(),
+                            LBBuilder<S, int>* init_lb_builder = new RandomLBBuilder<S>(),
                             int init_miter = 1000, float init_eps = 0.0001);
     ~MONSClassifier();
 
@@ -31,17 +31,17 @@ class MONSClassifier {
     Vec<int> predict(const Mat<S>& X);
 
  private:
-    bool check_margin(const SampleSet<S>& valid, const SampleSet<S>& train,
+    bool check_margin(const SampleSet<S, int>& valid, const SampleSet<S, int>& train,
                       Vec<float>* avg_margins, int curr_iter);
-    float get_class_estim(const SampleSet<S>& train, const Vec<S>& x, int class_tag);
-    Vec<float> get_class_estim(const SampleSet<S>& train, const Mat<S>& X, int class_tag);
+    float get_class_estim(const SampleSet<S, int>& train, const Vec<S>& x, int class_tag);
+    Vec<float> get_class_estim(const SampleSet<S, int>& train, const Mat<S>& X, int class_tag);
 };
 
 
 
 template<typename S, typename T>
 MONSClassifier<S, T>::MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
-                                     LBBuilder<S>* init_lb_builder,
+                                     LBBuilder<S, int>* init_lb_builder,
                                      int init_miter, float init_eps):
         genetic_dualizer(init_gen_dual),
         lb_builder(init_lb_builder),
@@ -63,9 +63,9 @@ template<typename S, typename T>
 void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
     LOG_(trace) << "Process of model fitting has begun...";
     train_set = sample_handler.make_samples(X, y, true);
-    SampleSet<S> train, valid;
+    SampleSet<S, int> train, valid;
     sample_handler.make_train_and_valid(train_set, &train, &valid);
-    int class_num = train_set.get_class_num();
+    int class_num = train_set.get_group_num();
     coll_sets = Vec<CollFamily<S>>(class_num);
     LOG_(trace) << "Train set: " << train;
     LOG_(trace) << "Valid set: " << valid;
@@ -90,7 +90,7 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
             coll_sets[k].add(new_colls);
             LOG_(trace) << "New collections were successfully added.";
         }
-        if (check_margin(valid, train, &avg_margins, i)) {
+        if (check_margin(valid, train, &avg_margins, i)) {  // TODO: Check margin!!!!
             LOG_(trace) << "Main loop was stopped because of margins' condition";
             break;
         }
@@ -120,11 +120,11 @@ Vec<int> MONSClassifier<S, T>::predict(const Mat<S> & X) {
 }
 
 template<typename S, typename T>
-bool MONSClassifier<S, T>::check_margin(const SampleSet<S>& valid,
-                                        const SampleSet<S>& train,
+bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
+                                        const SampleSet<S, int>& train,
                                         Vec<float>* avg_margins,
                                         int curr_iter) {
-    int class_num = valid.get_class_num();
+    int class_num = valid.get_group_num();
     int total_size = valid.get_total_size();
     bool was_satisfied = 1;
     int curr_idx = 0;
@@ -132,7 +132,7 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S>& valid,
     Vec<float> new_margins(total_size);
 
     for (int i = 0; i < class_num; i++) {
-        const ClassSamples<S>& class_samples = valid.get_class(i);
+        const GroupSamples<S, int>& class_samples = valid.get_group(i);
         int class_samples_size = class_samples.get_size();
         for (int j = 0; j < class_samples_size; j++) {
             float my_estim = 0.0, max_estim = 0.0;
@@ -156,9 +156,9 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S>& valid,
 }
 
 template<typename S, typename T>
-float MONSClassifier<S, T>::get_class_estim(const SampleSet<S>& train,
+float MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
                                             const Vec<S>& x, int class_tag) {
-    const ClassSamples<S>& needed_class = train.get_class(class_tag);
+    const GroupSamples<S, int>& needed_class = train.get_group(class_tag);
     CollFamily<S>& needed_family = coll_sets[class_tag];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();
@@ -171,9 +171,9 @@ float MONSClassifier<S, T>::get_class_estim(const SampleSet<S>& train,
 }
 
 template<typename S, typename T>
-Vec<float> MONSClassifier<S, T>::get_class_estim(const SampleSet<S>& train,
+Vec<float> MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
                                                  const Mat<S>& X, int class_tag) {
-    ClassSamples<S>& needed_class = train.get_class(class_tag);
+    GroupSamples<S, int>& needed_class = train.get_group(class_tag);
     CollFamily<S>& needed_family = coll_sets[class_tag];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();

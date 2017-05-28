@@ -16,15 +16,15 @@ int main(int argc, char* argv[]) {
     // LOG_(fatal) << "A fatal severity message";
 
     DatasetReader<int> data_reader;
-    Mat<int> data = data_reader.read_csv("datasets/classification/ttt.csv");
+    Mat<int> data = data_reader.read_csv("datasets/classification/synthetic-test2.csv");
     Vec<int> target = data.get_col(-1);
     data = data.get_rect(0, 0, -1, data.get_sy()-1);
 
     LOG_(info) << "Data matrix: " << data;
     LOG_(info) << "Target vector: " << target;
 
-    MONSClassifier<int, bool> mons_classifier(GeneticDualizer<int, bool>(3, 0.1));
-    mons_classifier.fit(data, target);
+    MONSClassifier<int, bool> mons(GeneticDualizer<int, bool>(5, 0.05, true, kDataScore, kDelayConverged, 0.001));
+    mons.fit(data, target);
 
     LOG_(debug) << "Program ended successfully.";
     return 0;

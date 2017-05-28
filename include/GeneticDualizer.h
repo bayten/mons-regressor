@@ -105,7 +105,7 @@ GenDualInitiator<S, T>::GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
 template<typename S, typename T>
 GenDualInitiator<S, T>::GenDualInitiator(const GenDualInitiator<S, T>& gi_obj,
                                          GeneticDualizer<S, T>* parent):
-        GeneticInitiator<S, T, int>(gi_obj),
+        GeneticInitiator<S, int, T>(gi_obj),
         my_parent(parent),
         covering_handler(gi_obj.covering_handler) {
 }
@@ -415,7 +415,7 @@ float GeneticDualizer<S, T>::get_data_quality(const Chromosome<T>& chromo) {
         LOG_(error) << "Using data quality instead of something else!";
         return 0.0;
     }
-    LOG_(trace) << "Getting data quality of " << chromo << " chromosome...";
+    // LOG_(trace) << "Getting data quality of " << chromo << " chromosome...";
 
     const GroupSamples<S, int>& basic_class = basic.get_group(target_tag);
     const GroupSamples<S, int>& valid_class = valid.get_group(target_tag);
@@ -424,21 +424,17 @@ float GeneticDualizer<S, T>::get_data_quality(const Chromosome<T>& chromo) {
     int basic_class_num = basic_class.get_size();
     int valid_class_num = valid_class.get_size();
 
-    LOG_(trace) << "basic: " << basic_class;
-    LOG_(trace) << "valid: " << valid_class;
+    // LOG_(trace) << "basic: " << basic_class;
+    // LOG_(trace) << "valid: " << valid_class;
 
     float quality_sum = 0.0;
-    for (int i = 0; i < basic_class_num; i++)
-        for (int j = 0; j < valid_class_num; j++) {
-            bool vote = chromo_coll.vote_func(basic_class[i], valid_class[j]);
+    for (int i = 0; i < valid_class_num; i++)
+        for (int j = 0; j < basic_class_num; j++) {
+            bool vote = chromo_coll.vote_func(valid_class[i], basic_class[j]);
             quality_sum += vote;
-            if (vote) {
-                LOG_(trace) << "Positive vote func for " << i << ", " << j << " objects:";
-                LOG_(trace) << basic_class[i] << ", " << valid_class[j];
-            }
         }
-    LOG_(trace) << "Quality sum: " << quality_sum;
-    return quality_sum / static_cast<float>(valid_class_num);
+    // LOG_(trace) << "Quality sum: " << quality_sum;
+    return quality_sum / static_cast<float>(valid_class_num*basic_class_num);
 }
 
 
@@ -448,7 +444,7 @@ float GeneticDualizer<S, T>::get_weighted_quality(const Chromosome<T>& chromo) {
         LOG_(error) << "Using weighted quality instead of something else!";
         return 0.0;
     }
-    LOG_(trace) << "Getting weighted quality of " << chromo << " chromosome...";
+    // LOG_(trace) << "Getting weighted quality of " << chromo << " chromosome...";
 
     Vec<T> chromo_genes = chromo.get_genes();
     int vec_len = chromo_genes.get_size();

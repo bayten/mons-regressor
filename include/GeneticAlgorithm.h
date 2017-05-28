@@ -130,6 +130,11 @@ Vec< Vec<U> > GeneticAlgorithm<S, T, U>::execute_ga() {
         LOG_(trace) << "Current costs: " << curr_population;
 
         Population<U> breed_population = selector->select_population(curr_population);
+        if (breed_population.get_size() <= 1) {
+            LOG_(error) << "Population has degradated.";
+            return curr_population.get_popul_data();
+        }
+
         LOG_(trace) << "Selected population for breeding: " << breed_population;
         Population<U> children_population = breeder->breed_new_population(breed_population);
         LOG_(trace) << "Children population: " << children_population;

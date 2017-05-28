@@ -42,7 +42,7 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class
     const GroupSamples<T, int>& tag_class = train.get_group(class_tag);
     SampleSet<T, int> tag_anticlass(train.get_antigroup(class_tag));
     int tag_class_size = tag_class.get_size();
-    int limit = static_cast<int>(3*sqrt(tag_class_size))+3;
+    int limit = static_cast<int>(0.7*tag_class_size*log(tag_class_size))+3;
 
     local_basis = ElColl<T>();
     std::vector<int>idx(tag_class_size);
@@ -52,16 +52,16 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class
     LOG_(trace) << "Working with train set: " << train;
     LOG_(trace) << "Need to add " << limit << " random elementary classifiers.";
     for (int i = 0; local_basis.get_size() < limit; i++) {
+        if (i == tag_class_size) {
+            LOG_(warning) << "Reached the end of train objects - going to the start";
+            i = 0;
+        }
         ElClass<T> new_elclass(get_rand_ec(tag_class[idx[i]]));
         LOG_(trace) << "New elementary classifier to add(" << new_elclass << ")...";
         if (!local_basis.add(new_elclass)) {
             LOG_(trace) << "...was rejected.";
         } else {
             LOG_(trace) << "...was added to local basis!";
-        }
-        if (i == tag_class_size) {
-            LOG_(warning) << "Reached the end of train objects - going to the start";
-            i = 0;
         }
     }
 

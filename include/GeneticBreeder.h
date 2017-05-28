@@ -81,7 +81,7 @@ GeneticBreeder<T>::GeneticBreeder(float init_pfrac, int init_plim, bool init_max
         popul_lim(init_plim),
         cross_type(init_ctype),
         cross_param(init_cparam),
-        is_max_sf(init_max_sf) {
+        is_max_sf((init_max_sf) ? 1 : 0) {
 }
 
 template<typename T>
@@ -90,7 +90,7 @@ GeneticBreeder<T>::GeneticBreeder(const GeneticBreeder<T>& gb_obj):
         popul_lim(gb_obj.popul_lim),
         cross_type(gb_obj.cross_type),
         cross_param(gb_obj.cross_param),
-        is_max_sf(gb_obj.is_max_sf) {
+        is_max_sf((gb_obj.is_max_sf) ? 1 : 0) {
 }
 
 template<typename T>

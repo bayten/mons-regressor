@@ -42,6 +42,7 @@ class Population {
     Population() {}
     ~Population() {}
 
+    bool check_chromo(const Chromosome<T>& check_obj) const;
     bool add_chromo(const Chromosome<T>& add_obj, bool allow_dups = false);
     bool del_chromo(int idx);
 
@@ -117,16 +118,19 @@ std::ostream& operator<<(std::ostream& os, const Chromosome<S>& chromo) {
 }
 
 template<typename T>
-bool Population<T>::add_chromo(const Chromosome<T>& add_obj, bool allow_dups) {
+bool Population<T>::check_chromo(const Chromosome<T>& check_obj) const {
     int chromo_num = chromo_vec.get_size();
-    // LOG_(trace) << "Adding " << add_obj << "...";
-    if(!allow_dups) {
     for (int i = 0; i < chromo_num; i++)
-        if (add_obj == chromo_vec[i]) {
-            // LOG_(trace) << "Chromosomes " << add_obj << " and " << chromo_vec[i] << " are equal.";
+        if (check_obj == chromo_vec[i])
             return 0;
-        }
-    }
+    return 1;
+}
+
+template<typename T>
+bool Population<T>::add_chromo(const Chromosome<T>& add_obj, bool allow_dups) {
+    // LOG_(trace) << "Adding " << add_obj << "...";
+    if(!allow_dups && !check_chromo(add_obj))
+        return 0;
     // LOG_(trace) << "No duplicates were found.";
     chromo_vec.append(add_obj);
     // LOG_(trace) << "New chromosome was added to population: " << (*this);
