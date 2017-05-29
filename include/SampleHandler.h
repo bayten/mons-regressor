@@ -67,12 +67,13 @@ int SampleHandler<S, T>::make_train_and_valid(const SampleSet<S, T>& sample_set,
     Vec<T> slice_y;
 
     int group_num = sample_set.get_group_num();  // doing this to have samples of every
+    Vec<T> sset_tags = sample_set.get_tags();
     LOG_(trace) << "Group amount: " << group_num;
 
 
     if (std::is_same<T, int>::value) {  // classification case
         for (int i = 0; i < group_num; i++) {  // class in validation set
-            const GroupSamples<S, int>& curr_group = sample_set.get_group(i);
+            const GroupSamples<S, T>& curr_group = sample_set.get_group(sset_tags[i]);
             int curr_group_size = curr_group.get_size();
             int slice_num = static_cast<int>(2 * log(curr_group_size)+1);
 
@@ -82,13 +83,13 @@ int SampleHandler<S, T>::make_train_and_valid(const SampleSet<S, T>& sample_set,
                 slice_num = new_slice;
             }
 
-            LOG_(trace) << "Taking " << slice_num << "/" << curr_group_size << ", group:" << i;
+            LOG_(trace) << "Taking " << slice_num << "/" << curr_group_size << ", group:" << sset_tags[i];
             curr_group.slice_rand(slice_num, &slice_X, &slice_y);
 
             valid->append(slice_X, slice_y);
             Vec<int> tag_vec(curr_group_size - slice_num);
             for (int j = 0; j < curr_group_size - slice_num; j++)
-                tag_vec[j] = i;
+                tag_vec[j] = sset_tags[i];
 
             train->append(curr_group.get_objs().get_rect(slice_num, 0), tag_vec);
         }

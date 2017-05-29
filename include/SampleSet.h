@@ -62,11 +62,12 @@ class SampleSet {
     const GroupSamples<S, T>& get_group(T index_tag) const;
     SampleSet<S, T> get_antigroup(T index_tag) const;
     void get_data(Mat<S>* data_dummy, Vec<T>* target_dummy);
+    Vec<T> get_tags() const;
     bool delete_group(T index_tag);
 
     SampleSet<S, T>& operator= (const SampleSet<S, T>& copy_obj);  // copy assignment
-    Vec<S>& operator[](int abs_index);
-    const Vec<S>& operator[](int abs_index) const;
+    Vec<S>& operator[](int abs_index);  // TODO: Counter-intuitive function -> redefine
+    const Vec<S>& operator[](int abs_index) const;  // same here
 
     template<typename U, typename V>
     friend std::ostream& operator<<(std::ostream& os, const SampleSet<U, V>& sset);
@@ -158,6 +159,7 @@ const GroupSamples<S, T>& SampleSet<S, T>::get_group(T index_tag) const {
         if (groups[i].get_tag() == index_tag)
             return groups[i];
 
+    LOG_(warning) << "No group with tag " << index_tag << " were found.";
     return groups[0];
 }
 
@@ -186,6 +188,16 @@ void SampleSet<S, T>::get_data(Mat<S>* data_dummy, Vec<T>* target_dummy) {
             curr_idx++;
         }
     }
+}
+
+template<typename S, typename T>
+Vec<T> SampleSet<S, T>::get_tags() const {
+    int group_num = groups.get_size();
+    Vec<T> tags(group_num);
+
+    for (int i = 0; i < group_num; i++)
+        tags[i] = groups[i].get_tag();
+    return tags;
 }
 
 template<typename S, typename T>

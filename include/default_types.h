@@ -34,6 +34,7 @@ class Vec {
 
     void append(const T& apnd_obj, int index = -1);
     bool erase(int index = -1);
+    int where(const T& obj);
     Vec<T> slice(int begin, int end) const;
     Vec<T> sort() const;
     Vec<int> sort_indices() const;
@@ -276,6 +277,14 @@ bool Vec<T>::erase(int index) {
 
     // LOG_(trace) << "New vec after erase: " << (*this);
     return 1;
+}
+
+template<typename T>
+int Vec<T>::where(const T& obj) {
+    for (int i = 0; i < sz; i++)
+        if (data[i] == obj)
+            return i;
+    return -1;
 }
 
 template<typename T>

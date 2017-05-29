@@ -95,10 +95,11 @@ Vec<int> dbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
                     LOG_(trace) << "Inner processing object " << j << "...";
                     was_processed[j] = 1;
                     for (int k = 0; k < samples_num; k++)
-                        if (dist_mat[j][k] >= 0 && !was_processed[k]) {
+                        if (dist_mat[j][k] >= 0) {
                             LOG_(trace) << "Object " << k << " within eps radius!";
-                            was_changed = 1;
                             target_class[k] = class_label;
+                            if(!was_processed[k])
+                                was_changed = 1;
                         }
                 }
             }

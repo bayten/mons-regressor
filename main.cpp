@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     LOG_(info) << "Data matrix: " << data;
     LOG_(info) << "Target vector: " << target;
 
-    MONSRegressor<int, int, bool> mons(GeneticDualizer<int, bool>(5, 0.05, true, kDataScore, kDelayConverged, 0.001));
+    MONSRegressor<int, int, bool> mons(GeneticDualizer<int, bool>(3, 0.05, true, kDataScore, kDelayConverged, 0.001));
     mons.fit(data, target);
 
     LOG_(debug) << "Program ended successfully.";

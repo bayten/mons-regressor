@@ -16,6 +16,7 @@ class MONSClassifier {
     SampleHandler<S, int> sample_handler;
 
     Vec< CollFamily<S> > coll_sets;
+    Vec<int> class_tags;
     SampleSet<S, int> train_set;
 
     int max_iter;
@@ -47,6 +48,7 @@ MONSClassifier<S, T>::MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
         lb_builder(init_lb_builder),
         sample_handler(),
         coll_sets(),
+        class_tags(),
         max_iter(init_miter),
         eps(init_eps) {
     srand(time(0));
@@ -63,10 +65,17 @@ template<typename S, typename T>
 void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
     LOG_(trace) << "Process of model fitting has begun...";
     train_set = sample_handler.make_samples(X, y, true);
+    LOG_(trace) << "Initial data set:" << train_set;
+
     SampleSet<S, int> train, valid;
     sample_handler.make_train_and_valid(train_set, &train, &valid);
     int class_num = train_set.get_group_num();
     coll_sets = Vec<CollFamily<S>>(class_num);
+    class_tags = train_set.get_tags();
+
+    int train_num = train.get_group_num();
+    Vec<int> train_tags = train.get_tags();
+
     LOG_(trace) << "Train set: " << train;
     LOG_(trace) << "Valid set: " << valid;
 
@@ -76,13 +85,13 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
 
     for (int i = 1; i <= max_iter; i++) {
         LOG_(trace) << "Loop iteration: " << i;
-        for (int k = 0; k < class_num; k++) {
-            LOG_(trace) << "For class: " << k;
-            ElColl<S> local_basis = lb_builder->build_lb(train, k);
+        for (int k = 0; k < train_num; k++) {
+            LOG_(trace) << "For class: " << train_tags[k];
+            ElColl<S> local_basis = lb_builder->build_lb(train, train_tags[k]);
             LOG_(trace) << "Local basis: " << local_basis;
 
             LOG_(trace) << "Processing Genetic Algorithm...";
-            genetic_dualizer.set_init_data(train, local_basis, k);
+            genetic_dualizer.set_init_data(train, local_basis, train_tags[k]);
             Vec< Vec<T> > encoded_colls = genetic_dualizer.execute_ga();
             Vec< ElColl<S> > new_colls = genetic_dualizer.decode_collections(encoded_colls);
 
@@ -102,12 +111,12 @@ Vec<int> MONSClassifier<S, T>::predict(const Mat<S> & X) {
     int class_num = coll_sets.get_size();
     int obj_num = X.get_sx();
     Vec<int> class_preds(obj_num);
-    Vec<float> estim_vec = get_class_estim(train_set, X, 0);
+    Vec<float> estim_vec = get_class_estim(train_set, X, class_tags[0]);
     for (int i = 0; i < obj_num; i++)
         class_preds[i] = 0;
 
     for (int i = 1; i < class_num; i++) {
-        Vec<float> new_estim_vec = get_class_estim(train_set, X, i);
+        Vec<float> new_estim_vec = get_class_estim(train_set, X, class_tags[i]);
         for (int j = 0; j < obj_num; j++) {
             if (new_estim_vec[j] > estim_vec[j]) {
                 estim_vec[j] = new_estim_vec[j];
@@ -124,21 +133,28 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
                                         const SampleSet<S, int>& train,
                                         Vec<float>* avg_margins,
                                         int curr_iter) {
-    int class_num = valid.get_group_num();
+    LOG_(trace) << "Checking margin...";
+    int valid_num = valid.get_group_num();
+    Vec<int> valid_tags = valid.get_tags();
+
+    int train_num = train.get_group_num();
+    Vec<int> train_tags = train.get_tags();
+
     int total_size = valid.get_total_size();
     bool was_satisfied = 1;
     int curr_idx = 0;
     float curr_margin = 0.0;
     Vec<float> new_margins(total_size);
 
-    for (int i = 0; i < class_num; i++) {
-        const GroupSamples<S, int>& class_samples = valid.get_group(i);
-        int class_samples_size = class_samples.get_size();
-        for (int j = 0; j < class_samples_size; j++) {
+    for (int i = 0; i < valid_num; i++) {
+        LOG_(trace) << "Checking class " << valid_tags[i] << "...";
+        const GroupSamples<S, int>& valid_samples = valid.get_group(valid_tags[i]);
+        int valid_samples_size = valid_samples.get_size();
+        for (int j = 0; j < valid_samples_size; j++) {
             float my_estim = 0.0, max_estim = 0.0;
-            for (int k = 0; k < class_num; k++) {
-                float k_estim = get_class_estim(valid, class_samples[j], k);
-                if (k == i)
+            for (int k = 0; k < train_num; k++) {
+                float k_estim = get_class_estim(train, valid_samples[j], train_tags[k]);
+                if (class_tags[k] == class_tags[i])
                     my_estim = k_estim;
                 else if (max_estim < k_estim)
                     max_estim = k_estim;
@@ -159,7 +175,7 @@ template<typename S, typename T>
 float MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
                                             const Vec<S>& x, int class_tag) {
     const GroupSamples<S, int>& needed_class = train.get_group(class_tag);
-    CollFamily<S>& needed_family = coll_sets[class_tag];
+    CollFamily<S>& needed_family = coll_sets[class_tags.where(class_tag)];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();
 
@@ -174,7 +190,7 @@ template<typename S, typename T>
 Vec<float> MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
                                                  const Mat<S>& X, int class_tag) {
     GroupSamples<S, int>& needed_class = train.get_group(class_tag);
-    CollFamily<S>& needed_family = coll_sets[class_tag];
+    CollFamily<S>& needed_family = coll_sets[class_tags.where(class_tag)];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();
     int mat_sx = X.get_sx();

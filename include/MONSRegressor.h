@@ -62,14 +62,14 @@ void MONSRegressor<S, T, U>::fit(const Mat<S>& X, const Vec<T>& y) {
     Vec<int> cluster_y;
     switch (cluster_algorithm) {
         case kDBSCAN:
-            cluster_y = cluster_algos::dbscan<S>(feature_data, cluster_algos::kEuclidean, 1.0);
+            cluster_y = cluster_algos::dbscan<S>(feature_data, cluster_algos::kEuclidean, sqrt(2));
             break;
 
         default:
             LOG_(error) << "Unknown Cluster Algorithm Type(code:" << cluster_algorithm << ")";
     }
     SampleHandler<S, T> sample_handler;
-    cluster_matches = sample_handler.make_samples(y, cluster_y);
+    cluster_matches = sample_handler.make_samples(y, cluster_y, false);
     mons_instance.fit(X, cluster_y);
 }
 
