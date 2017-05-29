@@ -14,6 +14,7 @@ class SampleHandler {
     ~SampleHandler() {}
 
     SampleSet<S, T> make_samples(const Mat<S>& X, const Vec<T>& y, bool mix = true);
+    SampleSet<S, T> make_samples(const Vec<S>& X, const Vec<T>& y, bool mix = true);
     int make_train_and_valid(const SampleSet<S, T>& sample_set, \
                              SampleSet<S, T>* train, \
                              SampleSet<S, T>* valid);
@@ -26,6 +27,24 @@ SampleSet<S, T> SampleHandler<S, T>::make_samples(const Mat<S>& X, const Vec<T>&
     SampleSet<S, T> sample_set;
 
     sample_set.append(X, y);
+    LOG_(trace) << "Sample Set was made.";
+
+    if (mix) {
+        sample_set.shuffle();
+        LOG_(trace) << "Samples were mixed";
+    }
+    return sample_set;
+}
+
+template<typename S, typename T>
+SampleSet<S, T> SampleHandler<S, T>::make_samples(const Vec<S>& X, const Vec<T>& y, bool mix) {
+    LOG_(trace) << "Making samples...";
+    SampleSet<S, T> sample_set;
+    int x_size = X.get_size();
+    Mat<S> transposed_X(x_size, 1);
+    for (int i = 0; i < x_size; i++)
+        transposed_X[i][0] = X[i];
+    sample_set.append(transposed_X, y);
     LOG_(trace) << "Sample Set was made.";
 
     if (mix) {

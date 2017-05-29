@@ -27,6 +27,7 @@ class GroupSamples {
     void append(const Mat<S>& X);
 
     int get_size() const { return objs.get_sx(); }
+    int get_sy() const { return objs.get_sy(); }
     T get_tag() const { return group_tag; }
     const Mat<S>& get_objs() const { return objs; }
 
@@ -60,6 +61,7 @@ class SampleSet {
     const Vec< GroupSamples<S, T> >& get_groups() const { return groups; }
     const GroupSamples<S, T>& get_group(T index_tag) const;
     SampleSet<S, T> get_antigroup(T index_tag) const;
+    void get_data(Mat<S>* data_dummy, Vec<T>* target_dummy);
     bool delete_group(T index_tag);
 
     SampleSet<S, T>& operator= (const SampleSet<S, T>& copy_obj);  // copy assignment
@@ -164,6 +166,26 @@ SampleSet<S, T> SampleSet<S, T>::get_antigroup(T index_tag) const {
     SampleSet<S, T> new_sample_set(*this);
     new_sample_set.delete_group(index_tag);
     return new_sample_set;
+}
+
+template<typename S, typename T>
+void SampleSet<S, T>::get_data(Mat<S>* data_dummy, Vec<T>* target_dummy) {
+    int groups_num = groups.get_size();
+    int total_size = get_total_size();
+    int features_size = groups[0].get_sy();
+    (*data_dummy) = Mat<S>(total_size, features_size);
+    (*target_dummy) = Vec<T>(total_size);
+    int curr_idx = 0;
+    for (int i = 0; i < groups_num; i++) {
+        int group_size = groups[i].get_size();
+        T group_tag = groups[i].get_tag();
+
+        for (int j = 0; j < group_size; j++) {
+            (*data_dummy)[curr_idx] = groups[i][j];
+            (*target_dummy)[curr_idx] = group_tag;
+            curr_idx++;
+        }
+    }
 }
 
 template<typename S, typename T>

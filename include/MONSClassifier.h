@@ -9,7 +9,7 @@
 #ifndef INCLUDE_MONSCLASSIFIER_H_
 #define INCLUDE_MONSCLASSIFIER_H_
 
-template<typename S, typename T>
+template<typename S, typename T>  // S - features, T - coverings
 class MONSClassifier {
     GeneticDualizer<S, T> genetic_dualizer;
     LBBuilder<S, int>* lb_builder;
