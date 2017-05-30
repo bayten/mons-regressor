@@ -209,7 +209,7 @@ std::ostream& operator<<(std::ostream& os, const Vec<S>& vec) {
 
     if (vec.data == nullptr) {
         buffer << "nullptr";
-    } else if (vec.sz < 17) {
+    } else if (vec.sz < 10000) {
         buffer << vec.data[0];
         for (int i = 1; i < vec.sz; i++)
             buffer << ", " << vec.data[i];

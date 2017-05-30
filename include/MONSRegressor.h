@@ -62,7 +62,7 @@ void MONSRegressor<S, T, U>::fit(const Mat<S>& X, const Vec<T>& y) {
     Vec<int> cluster_y;
     switch (cluster_algorithm) {
         case kDBSCAN:
-            cluster_y = cluster_algos::dbscan<S>(feature_data, cluster_algos::kEuclidean, sqrt(2));
+            cluster_y = cluster_algos::dmdbscan<S>(feature_data, cluster_algos::kEuclidean);
             break;
 
         default:

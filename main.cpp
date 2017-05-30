@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     // LOG_(fatal) << "A fatal severity message";
 
     DatasetReader<int> data_reader;
-    Mat<int> data = data_reader.read_csv("datasets/classification/synthetic-test2.csv");
+    Mat<int> data = data_reader.read_csv("datasets/classification/clustering.csv");
     Vec<int> target = data.get_col(-1);
     data = data.get_rect(0, 0, -1, data.get_sy()-1);
 

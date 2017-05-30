@@ -110,80 +110,116 @@ Vec<int> dbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
     return target_class;
 }
 
-//
-// template<typename S, typename T>
-// SampleSet<S, int> dmdbscan(SampleSet<S, T> data, MetricType used_metric = kEuclidean,
-//                            int min_neigh = 3) {
-//     int samples_num = data.get_total_size();
-//     Mat<float> dist_mat(samples_num, samples_num); //
-//
-//     for (int i = 0; i < samples_num-1; i++) {
-//         for (int j = i+1; j < samples_num; j++) {
-//             float dist = find_dist(data[i], data[j]);
-//             dist = (dist <= eps) ? dist : -1.0;
-//             dist_mat[i][j] = dist;
-//             dist_mat[i][j] = dist;
-//         }
-//     }
-//
-//     Mat<int> neigh_mat(samples_num, samples_num);
-//     Vec<int> target_class(samples_num);
-//     Vec<bool> was_processed(samples_num);
-//     for (int i = 0; i < samples_num; i++) {
-//         target_class[i] = -1;
-//         was_processed[i] = 0;
-//
-//         Vec<float> vals;
-//         Vec<int> idxs;
-//         for (int j = 0; j < samples_num; j++) {
-//             neigh_mat[i][j] = 0;
-//
-//             if (dist_mat[i][j] >= 0.0) {
-//                 vals.append(dist_mat);
-//                 idxs.append(j);
-//             }
-//         }
-//         Vec<int> sort_idxs = vals.sort_indices();
-//
-//         int neigh_num = idxs.get_size();
-//         if (neigh_num < min_neigh) {  // outlier
-//             target_class[i] = 0;
-//             was_processed[i] = 1;
-//         }
-//
-//         for (int j = 0; j < neigh_num; j++)
-//             neigh_mat[i][idxs[sort_idxs[j]]] = j+1;
-//     }
-//
-//     int class_label = 1;
-//     for (int i = 0; i < samples_num; i++) {
-//         if (was_processed[i])
-//             continue;
-//
-//         Vec<int> prev_target = target_class;
-//         target_class[i] = class_label;
-//         bool was_changed = 1;
-//         while (was_changed) {
-//             was_changed = 0;
-//             prev_target = target_class;
-//             for (int j = 0; j < samples_num; j++) {
-//                 if (target_class[j] == class_label && !was_processed[j]) {
-//                     was_processed[j] = 1;
-//                     for (int k = 0; k < samples_num; k++)
-//                         if (neigh_mat[j][k])
-//                             target_class[j] = class_label;
-//                 }
-//             }
-//         }
-//     }
-//
-//     Mat<S> data_dummy;
-//     Vec<T> old_target;
-//     data.get_data(&data_dummy, &old_target);
-//     SampleSet<S, int> out_sset;
-//     out_sset.append(data_dummy, target_class);
-//     return out_sset;
-// }
+Vec<float> get_diff_deriv(const Vec<float>& data, int h = 1) {
+    int vec_len = data.get_size();
+    Vec<float> out_vec(vec_len);
+
+    for (int i = h; i < vec_len-h; i++)
+        out_vec[i] = (data[i+h]- data[i-h])/static_cast<float>(2*h);
+
+    for (int i = 0; i < h; i++) {
+        out_vec[i] = out_vec[h];
+        out_vec[vec_len-i-1] = out_vec[vec_len-h-1];
+    }
+    return out_vec;
+}
+
+template<typename S>
+Vec<int> dmdbscan(const Mat<S>& data,
+                           MetricType used_metric = kEuclidean,
+                           int min_neigh = 3) {
+   int samples_num = data.get_sx();
+   Mat<float> dist_mat(samples_num, samples_num);
+
+    for (int i = 0; i < samples_num; i++) {
+        dist_mat[i][i] = -1;
+        for (int j = i+1; j < samples_num; j++) {
+            float dist = find_dist(data[i], data[j], used_metric);
+            dist_mat[i][j] = dist;
+            dist_mat[j][i] = dist;
+        }
+    }
+
+    Vec<int> target_class(samples_num);
+    Vec<bool> was_processed(samples_num);
+
+    Vec<float> kdist_data(samples_num);
+    for (int i = 0; i < samples_num; i++) {
+        target_class[i] = -1;
+        was_processed[i] = 0;
+
+        Vec<float> vals;
+        Vec<int> idxs;
+        for (int j = 0; j < samples_num; j++) {
+            if (dist_mat[i][j] >= 0.0) {
+                vals.append(dist_mat[i][j]);
+                idxs.append(j);
+            }
+        }
+        Vec<int> sort_idxs = vals.sort_indices();
+        kdist_data[i] = dist_mat[i][idxs[sort_idxs[min_neigh]]];
+    }
+
+    Vec<float> kdist_fst_deriv = get_diff_deriv(kdist_data.sort());
+    Vec<float> kdist_sec_deriv = get_diff_deriv(kdist_fst_deriv);
+
+    Vec<float> epsilons;
+
+    for (int i = 0; i < samples_num-1; i++)
+        if (kdist_sec_deriv[i] > 0 && kdist_sec_deriv[i+1] < 0)
+            epsilons.append((kdist_data[i]+kdist_data[i+1])/2.0);
+    LOG_(trace) << "Estimated epsilons: " << epsilons;
+
+    int epses_num = epsilons.get_size();
+    Vec<float> matching_epses(samples_num);
+
+    for (int i = 0; i < samples_num; i++) {
+        if (kdist_data[i] >= epsilons[-1]) {
+            target_class[i] = 0;
+            was_processed[i] = 1;
+        }
+
+        for (int j = 0; j < epses_num; j++) {
+            if (kdist_data[i] < epsilons[j]) {
+                matching_epses[i] = epsilons[j];
+                break;
+            }
+        }
+    }
+
+    int class_label = 1;
+    for (int i = 0; i < samples_num; i++) {
+        if (was_processed[i]) {
+            LOG_(trace) << "Object " << i << " was processed already";
+            continue;
+        }
+        LOG_(trace) << "Processing object " << i;
+
+        target_class[i] = class_label;
+        bool was_changed = 1;
+        while (was_changed) {
+            LOG_(trace) << "TARGET" << target_class;
+            was_changed = 0;
+            for (int j = 0; j < samples_num; j++) {
+                if (target_class[j] == class_label && !was_processed[j]) {
+                    LOG_(trace) << "Inner processing object " << j << "...";
+                    was_processed[j] = 1;
+                    for (int k = 0; k < samples_num; k++)
+                        if (dist_mat[j][k] <= matching_epses[j]) {
+                            LOG_(trace) << "Object " << k << " within eps radius!";
+                            target_class[k] = class_label;
+                            if(!was_processed[k])
+                                was_changed = 1;
+                        }
+                }
+            }
+        }
+        LOG_(trace) << "Exited processing loop";
+        class_label++;
+    }
+
+    return target_class;
+}
 
 }
 #endif  // INCLUDE_GENETIC_TYPES_H_
