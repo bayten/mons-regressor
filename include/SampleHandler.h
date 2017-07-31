@@ -24,6 +24,9 @@ class SampleHandler {
 template<typename S, typename T>
 SampleSet<S, T> SampleHandler<S, T>::make_samples(const Mat<S>& X, const Vec<T>& y, bool mix) {
     LOG_(trace) << "Making samples...";
+    LOG_(trace) << "Input matrix:" << X;
+    LOG_(trace) << "Input target:" << y;
+    LOG_(trace) << "Input mix:" << mix;
     SampleSet<S, T> sample_set;
 
     sample_set.append(X, y);
@@ -75,6 +78,16 @@ int SampleHandler<S, T>::make_train_and_valid(const SampleSet<S, T>& sample_set,
         for (int i = 0; i < group_num; i++) {  // class in validation set
             const GroupSamples<S, T>& curr_group = sample_set.get_group(sset_tags[i]);
             int curr_group_size = curr_group.get_size();
+
+            if (curr_group_size <= 3) {
+                Vec<T> tag_vec(curr_group_size);
+                for (int j = 0; j < curr_group_size; j++)
+                    tag_vec[j] = sset_tags[i];
+                LOG_(trace) << "Emergency case: " << curr_group_size;
+                valid->append(curr_group.get_objs(), tag_vec);
+                train->append(curr_group.get_objs(), tag_vec);
+                continue;
+            }
             int slice_num = static_cast<int>(2 * log(curr_group_size)+1);
 
             if (2*slice_num >= curr_group_size) {  // this case can occur in case of small train sets

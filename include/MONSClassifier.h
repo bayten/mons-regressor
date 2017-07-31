@@ -25,11 +25,14 @@ class MONSClassifier {
  public:
     explicit MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
                             LBBuilder<S, int>* init_lb_builder = new RandomLBBuilder<S>(),
-                            int init_miter = 1000, float init_eps = 0.0001);
+                            int init_miter = 1000, float init_eps = 0.001);
     ~MONSClassifier();
 
     void fit(const Mat<S>& X, const Vec<int>& y);
     Vec<int> predict(const Mat<S>& X);
+
+    bool save_coll_sets(const char path[]) const;
+    bool load_coll_sets(const char path[]);
 
  private:
     bool check_margin(const SampleSet<S, int>& valid, const SampleSet<S, int>& train,
@@ -80,6 +83,8 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
     LOG_(trace) << "Valid set: " << valid;
 
     Vec<float> avg_margins(valid.get_total_size());
+    for (int i = 0; i < valid.get_total_size(); i++)
+        avg_margins[i] = 0.0;
 
     LOG_(trace) << "Starting main fitting loop(class num: " << class_num << ")...";
 
@@ -99,7 +104,7 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
             coll_sets[k].add(new_colls);
             LOG_(trace) << "New collections were successfully added.";
         }
-        if (check_margin(valid, train, &avg_margins, i)) {  // TODO: Check margin!!!!
+        if (check_margin(valid, train, &avg_margins, i)) {
             LOG_(trace) << "Main loop was stopped because of margins' condition";
             break;
         }
@@ -108,6 +113,8 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
 
 template<typename S, typename T>
 Vec<int> MONSClassifier<S, T>::predict(const Mat<S> & X) {
+    LOG_(trace) << "Predicting stuff! Get prepared!";
+    LOG_(trace) << "Collection sets: " << coll_sets;
     int class_num = coll_sets.get_size();
     int obj_num = X.get_sx();
     Vec<int> class_preds(obj_num);
@@ -134,6 +141,8 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
                                         Vec<float>* avg_margins,
                                         int curr_iter) {
     LOG_(trace) << "Checking margin...";
+    LOG_(trace) << "Prev margins:" << *avg_margins;
+
     int valid_num = valid.get_group_num();
     Vec<int> valid_tags = valid.get_tags();
 
@@ -145,6 +154,7 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
     int curr_idx = 0;
     float curr_margin = 0.0;
     Vec<float> new_margins(total_size);
+    Vec<float> delta;
 
     for (int i = 0; i < valid_num; i++) {
         LOG_(trace) << "Checking class " << valid_tags[i] << "...";
@@ -161,11 +171,14 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
             }
             curr_margin = my_estim - max_estim;
             new_margins[curr_idx] = ((*avg_margins)[curr_idx]*(curr_iter-1)+curr_margin)/curr_iter;
-            if (fabs(new_margins[curr_idx] - (*avg_margins)[curr_idx]) >= eps)
+            delta.append(new_margins[curr_idx] - (*avg_margins)[curr_idx]);
+            if (new_margins[curr_idx] - (*avg_margins)[curr_idx] >= eps)
                 was_satisfied = 0;
             curr_idx++;
         }
     }
+    LOG_(trace) << "Delta vec:  " << delta;
+    LOG_(trace) << "New margins:" << new_margins;
     *avg_margins = new_margins;
 
     return was_satisfied;
@@ -189,17 +202,25 @@ float MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
 template<typename S, typename T>
 Vec<float> MONSClassifier<S, T>::get_class_estim(const SampleSet<S, int>& train,
                                                  const Mat<S>& X, int class_tag) {
-    GroupSamples<S, int>& needed_class = train.get_group(class_tag);
+    LOG_(trace) << "Launching class estim for tag:" << class_tag;
+    LOG_(trace) << "Class tags:" << class_tags;
+
+    const GroupSamples<S, int>& needed_class = train.get_group(class_tag);
+    if (class_tags.where(class_tag) == -1) {
+        LOG_(error) << "Unknown class tag!";
+        return Vec<float>();
+    }
+
     CollFamily<S>& needed_family = coll_sets[class_tags.where(class_tag)];
     int class_size = needed_class.get_size();
     int coll_num = needed_family.get_size();
     int mat_sx = X.get_sx();
 
-    Vec<float> estim_vec_sum;
+    Vec<float> estim_vec_sum(mat_sx);
     for (int i = 0; i < class_size; i++)
         for (int j = 0; j < coll_num; j++)
             for (int k = 0; k < mat_sx; k++)
-                estim_vec_sum[k] += needed_family.vote_func(X[k], needed_class[i]);
+                estim_vec_sum[k] += needed_family[j].vote_func(X[k], needed_class[i]);
 
     float divisor = class_size * coll_num;
     for (int i = 0; i < mat_sx; i++)

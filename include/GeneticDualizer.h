@@ -119,16 +119,26 @@ Population<T> GenDualInitiator<S, T>::get_init_population(const SampleSet<S, int
     int lim = (this->popul_lim) ? this->popul_lim : sample_set.get_total_size() * this->popul_frac;
     LOG_(trace) << "Need to get " << lim << " chromosomes.";
 
+    int overheat_cnt = 0;
     for (int i = 0; i < lim; i++) {
         Vec<T> new_genes(covering_handler.build_covering(gen_matrix));
         LOG_(trace) << "New genes for chromosome were generated as covering: " << new_genes;
 
         new_genes = covering_handler.make_covering_deadend(gen_matrix, new_genes);
         LOG_(trace) << "New genes were adapted for deadend-covering: " << new_genes;
-        if(!out_popul.add_chromo(Chromosome<T>(new_genes)))
+        if(!out_popul.add_chromo(Chromosome<T>(new_genes))) {
+            overheat_cnt++;
             i--;
+        } else {
+            overheat_cnt = 0;
+        }
+
+        if (overheat_cnt >= lim) {
+            break;
+        }
     }
     LOG_(trace) << "Initial population was successfully created.";
+    LOG_(trace) << "Initial population is formed with " << out_popul.get_size() << " chromos.";
     return out_popul;
 }
 
@@ -529,16 +539,20 @@ void GeneticDualizer<S, T>::set_init_data(const SampleSet<S, int>& init_set,
         LOG_(trace) << "Weights:" << lb_weights;
     }
 
-    gen_matrix = Mat<bool>(tclass_size * tanticlass_size, local_basis.get_size());
+    gen_matrix = Mat<bool>(0, lb_size);
+    Vec<bool> bin_vec(lb_size);
+
     for (int i = 0; i < tclass_size; i++) {
         for (int j = 0; j < tanticlass_size; j++) {
             Vec<bool> class_vec = local_basis.apply_to_object(tag_class[i]);
             Vec<bool> aclass_vec = local_basis.apply_to_object(tag_anticlass[j]);
 
             for (int k = 0; k < lb_size; k++)
-                gen_matrix[i*tanticlass_size + j][k] = class_vec[k] && !aclass_vec[k];
+                bin_vec[k] = class_vec[k] && !aclass_vec[k];
+            if (gen_matrix.where(bin_vec) == -1)
+                gen_matrix.hadd(bin_vec);
         }
-    };
+    }
     LOG_(trace) << "Created gen matrix:" << gen_matrix;
 }
 

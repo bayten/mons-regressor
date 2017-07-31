@@ -15,6 +15,7 @@ class CoveringHandler {
     Vec<T> standardize_int_form(const Mat<bool>& in_mat, const Vec<T>& in_vec);
     Vec<T> recover_admissibility(const Mat<bool>& in_mat, const Vec<T>& in_vec);
     Vec<int> get_ones_places(const Vec<bool>& in_vec);
+    Mat<bool> filter_mat(const Mat<bool>& in_mat);
 };
 
 

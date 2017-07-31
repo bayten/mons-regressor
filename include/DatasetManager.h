@@ -6,13 +6,14 @@
 #include "default_types.h"
 #include "log_wrapper.h"
 
-#ifndef INCLUDE_DATASETREADER_H_
-#define INCLUDE_DATASETREADER_H_
+#ifndef INCLUDE_DATASETMANAGER_H_
+#define INCLUDE_DATASETMANAGER_H_
 
 template<typename T>
-class DatasetReader {
+class DatasetManager {
  public:
     Mat<T> read_csv(const char path[], char sep = ',');
+    bool write_csv(const char path[], Mat<T> data);
 
  private:
     Vec<T> read_vals(std::string entry_str, char sep = ',');
@@ -20,7 +21,7 @@ class DatasetReader {
 
 
 template<typename T>
-Mat<T> DatasetReader<T>::read_csv(const char path[], char sep) {
+Mat<T> DatasetManager<T>::read_csv(const char path[], char sep) {
     std::ifstream file(path);
     std::string entry_val;
 
@@ -43,8 +44,24 @@ Mat<T> DatasetReader<T>::read_csv(const char path[], char sep) {
     return out_mat;
 }
 
+
 template<typename T>
-Vec<T> DatasetReader<T>::read_vals(std::string entry_str, char sep) {
+bool DatasetManager<T>::write_csv(const char path[], Mat<T> data) {
+    std::ofstream out_file;
+    out_file.open(path);
+    LOG_(trace) << "Outputting following mat:" << data;
+    int sx = data.get_sx(), sy = data.get_sy();
+    for (int i = 0; i < sx; i++) {
+        for (int j = 0; j < sy; j++) {
+            out_file << data[i][j] << ", ";
+        }
+        out_file << data[i][-1] << std::endl;
+    }
+    return 1;
+}
+
+template<typename T>
+Vec<T> DatasetManager<T>::read_vals(std::string entry_str, char sep) {
     // LOG_(trace) << "Reading values from vector...";
     // LOG_(trace) << "Entry string: \"" << entry_str << "\"";
     Vec<T> out_vec;
@@ -78,4 +95,4 @@ Vec<T> DatasetReader<T>::read_vals(std::string entry_str, char sep) {
     return out_vec;
 }
 
-#endif  // INCLUDE_DATASETREADER_H_
+#endif  // INCLUDE_DATASETMANAGER_H_

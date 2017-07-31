@@ -70,6 +70,8 @@ class Mat {
     template<typename S>
     friend std::ostream& operator<<(std::ostream& os, const Mat<S>& mat);
 
+    int where(const Vec<T>& obj);
+    Vec<int> where(const T& obj);
 
     int get_sx() const { return sx; }
     int get_sy() const { return sy; }
@@ -289,13 +291,21 @@ int Vec<T>::where(const T& obj) {
 
 template<typename T>
 Vec<T> Vec<T>::slice(int begin, int end) const {
-    LOG_(trace) << "Getting slice from " << (*this) << "...";
-    int slice_sz = end+1-begin;
+    LOG_(trace) << "Getting slice(" << begin << ", " << end << ") from " << (*this) << "...";
+
+    if (end == -1)
+        end = sz;
+
+    if (begin > end) {
+        LOG_(error) << " Can't get slice(" << begin << "; " << end << ")";
+        return Vec();
+    }
+
+    int slice_sz = end-begin;
     Vec<T> slice_vec(slice_sz);
 
     for (int i = 0; i < slice_sz; i++)
         slice_vec[i] = data[begin+i];
-    sz = sz-slice_sz;
 
     LOG_(trace) << "Slice: " << slice_vec;
     return slice_vec;
@@ -470,6 +480,30 @@ std::ostream& operator<<(std::ostream& os, const Mat<S>& mat) {
     }
     os << "]";
     return os;
+}
+
+template<typename T>
+int Mat<T>::where(const Vec<T>& obj) {
+    return data.where(obj);
+}
+
+template<typename T>
+Vec<int> Mat<T>::where(const T& obj) {
+    Vec<int> coords(2);
+    coords[0] = coords[1] = -1;
+
+    for (int i = 0; i < sx; i++) {
+        Vec<T> curr_row = data[i];
+        for (int j = 0; j < sy; j++) {
+            if (curr_row[j] == obj) {
+                coords[0] = i;
+                coords[1] = j;
+                return coords;
+            }
+        }
+    }
+
+    return coords;
 }
 
 #endif  // INCLUDE_DEFAULT_TYPES_H_
