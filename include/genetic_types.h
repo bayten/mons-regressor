@@ -150,7 +150,7 @@ float Population<T>::get_avg_score() const {
         total_score += chromo_vec[i].get_score();
     total_score /= chromo_num;
 
-    LOG_(trace) << "Average score for " << (*this) << ": " << total_score;
+    // LOG_(trace) << "Average score for " << (*this) << ": " << total_score;
     return total_score;
 }
 
@@ -167,7 +167,7 @@ const Chromosome<T>& Population<T>::get_best_ind() const {
             max_score = curr_score;
         }
     }
-    LOG_(trace) << "Best chromosome for " << (*this) << " is on " << idx << " position";
+    // LOG_(trace) << "Best chromosome for " << (*this) << " is on " << idx << " position";
     return chromo_vec[idx];
 }
 

@@ -135,7 +135,7 @@ RouletteSelector<T>::RouletteSelector(const RouletteSelector<T>& rs_obj):
 
 template<typename T>
 Population<T> RouletteSelector<T>::select_population(const Population<T>& in_popul) {
-    LOG_(trace) << "Using Roulette selector...";
+    // LOG_(trace) << "Using Roulette selector...";
 
     Population<T> out_popul;
     int popul_size = in_popul.get_size();
@@ -151,12 +151,12 @@ Population<T> RouletteSelector<T>::select_population(const Population<T>& in_pop
     }
     for (int i = 0; i < popul_size; i++)
         probs[i] /= total_score;
-    LOG_(trace) << "Probability vector: " << probs;
+    // LOG_(trace) << "Probability vector: " << probs;
 
     int fail_iter = 10;
     for (int i = 0; i < needed_size; i++) {
         float rand_frac = static_cast<float>(rand()) / (RAND_MAX);
-        LOG_(trace) << "Rand fraction: " << rand_frac;
+        // LOG_(trace) << "Rand fraction: " << rand_frac;
 
         int chromo_idx = 0;
         for (; chromo_idx < popul_size; chromo_idx++) {
@@ -164,10 +164,10 @@ Population<T> RouletteSelector<T>::select_population(const Population<T>& in_pop
                 break;
             rand_frac -= probs[chromo_idx];
         }
-        LOG_(trace) << "Matching index: " << chromo_idx;
+        // LOG_(trace) << "Matching index: " << chromo_idx;
 
         if (!out_popul.add_chromo(in_popul[chromo_idx])) {
-            LOG_(trace) << "This chromosome was already chosen...";
+            // LOG_(trace) << "This chromosome was already chosen...";
             i--;
             if (!(--fail_iter))
                 break;

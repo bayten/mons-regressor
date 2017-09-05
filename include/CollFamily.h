@@ -14,6 +14,7 @@ class ElClass {
     explicit ElClass(int rank = 0);
 
     ElClass(int rank, int init_cols[], T init_vals[]);
+    ElClass(int rank, Vec<int> init_cols, Vec<T> init_vals);
 
     ~ElClass() {}
 
@@ -54,23 +55,26 @@ class ElColl {
 };
 
 
-template<typename T>
+template<typename S, typename T>  // S - for features, T - for class tags
 class CollFamily {
-    Vec< ElColl<T> > colls;
+    Vec< ElColl<S> > colls;
+    T class_tag;
 
  public:
-    explicit CollFamily(int size = 0) : colls(size) {}
-    CollFamily(int size, ElColl<T> init_colls[]);
+    explicit CollFamily(int size = 0, T init_tag = -1.00) : colls(size), class_tag(init_tag) {}
+    CollFamily(int size, ElColl<S> init_colls[], T init_tag);
+    CollFamily(int size, Vec< ElColl<S> > init_colls, T init_tag);
     ~CollFamily() {}
-    Vec<bool> add(const Vec<ElColl<T> >& new_colls);  // ...
+    Vec<bool> add(const Vec<ElColl<S> >& new_colls);  // ...
 
+    void set_tag(T init_tag) { class_tag = init_tag; }
     int get_size() const { return colls.get_size(); }
+    T get_tag() const { return class_tag; }
+    ElColl<S>& operator[](int idx) { return colls[idx]; }
+    const ElColl<S>& operator[](int idx) const { return colls[idx]; }
 
-    ElColl<T>& operator[](int idx) { return colls[idx]; }
-    const ElColl<T>& operator[](int idx) const { return colls[idx]; }
-
-    template<typename S>
-    friend std::ostream& operator<<(std::ostream& os, const CollFamily<S>& cfam);
+    template<typename U, typename V>
+    friend std::ostream& operator<<(std::ostream& os, const CollFamily<U, V>& cfam);
 };
 
 
@@ -89,6 +93,11 @@ ElClass<T>::ElClass(int rank, int init_cols[], T init_vals[]):
         cols[i] = init_cols[i];
         vals[i] = init_vals[i];
     }
+}
+
+template<typename T>
+ElClass<T>::ElClass(int rank, Vec<int> init_cols, Vec<T> init_vals):
+        cols(init_cols), vals(init_vals) {
 }
 
 template<typename T>
@@ -202,18 +211,24 @@ std::ostream& operator<<(std::ostream& os, const ElColl<S>& el_coll) {
     std::stringstream buffer;
     int el_coll_size = el_coll.ecs.get_size();
     buffer << "ElColl<" << el_coll_size << ">:[" << std::endl;
+    // if (el_coll_size < 1) {
+    //     buffer << "nullptr" << std::endl;
+    // } else if (el_coll_size < 10) {
+    //     for (int i = 0; i < el_coll_size; i++)
+    //         buffer << el_coll.ecs[i] << "," << std::endl;
+    // } else {
+    //     buffer << el_coll.ecs[0] << "," << std::endl;
+    //     buffer << el_coll.ecs[1] << "," << std::endl;
+    //     buffer << el_coll.ecs[2] << "," << std::endl << "...," << std::endl;
+    //     buffer << el_coll.ecs[el_coll_size-3] << "," << std::endl;
+    //     buffer << el_coll.ecs[el_coll_size-2] << "," << std::endl;
+    //     buffer << el_coll.ecs[el_coll_size-1] << "," << std::endl;
+    // }
     if (el_coll_size < 1) {
         buffer << "nullptr" << std::endl;
-    } else if (el_coll_size < 10) {
+    } else {
         for (int i = 0; i < el_coll_size; i++)
             buffer << el_coll.ecs[i] << "," << std::endl;
-    } else {
-        buffer << el_coll.ecs[0] << "," << std::endl;
-        buffer << el_coll.ecs[1] << "," << std::endl;
-        buffer << el_coll.ecs[2] << "," << std::endl << "...," << std::endl;
-        buffer << el_coll.ecs[el_coll_size-3] << "," << std::endl;
-        buffer << el_coll.ecs[el_coll_size-2] << "," << std::endl;
-        buffer << el_coll.ecs[el_coll_size-1] << "," << std::endl;
     }
     buffer << "]";
     os << buffer.str();
@@ -221,14 +236,20 @@ std::ostream& operator<<(std::ostream& os, const ElColl<S>& el_coll) {
 }
 
 
-template<typename T>
-CollFamily<T>::CollFamily(int size, ElColl<T> init_colls[]): colls(size) {
+template<typename S, typename T>
+CollFamily<S, T>::CollFamily(int size, ElColl<S> init_colls[], T init_tag):
+        colls(size), class_tag(init_tag) {
     for (int i = 0; i < size; i++)
         colls[i] = init_colls[i];
 }
 
-template<typename T>
-Vec<bool> CollFamily<T>::add(const Vec<ElColl<T> >& new_colls) {
+template<typename S, typename T>
+CollFamily<S, T>::CollFamily(int size, Vec< ElColl<S> > init_colls, T init_tag):
+        colls(init_colls), class_tag(init_tag) {
+}
+
+template<typename S, typename T>
+Vec<bool> CollFamily<S, T>::add(const Vec<ElColl<S> >& new_colls) {
     int new_coll_num = new_colls.get_size();
     Vec<bool> add_state(new_coll_num);
 
@@ -249,14 +270,19 @@ Vec<bool> CollFamily<T>::add(const Vec<ElColl<T> >& new_colls) {
     return add_state;
 }
 
-template<typename S>
-std::ostream& operator<<(std::ostream& os, const CollFamily<S>& cfam) {
+template<typename U, typename V>
+std::ostream& operator<<(std::ostream& os, const CollFamily<U, V>& cfam) {
     std::stringstream buffer;
     int cfam_size = cfam.colls.get_size();
-    buffer << "CFamily<" << cfam_size << ">:[";
-    buffer << cfam.colls[0];
-    for (int i = 1; i < cfam_size; i++)
-        buffer << ", " << cfam.colls[i];
+    buffer << "CFamily<" << cfam_size << ", " << cfam.get_tag() << ">:[" << std::endl;
+
+    if (cfam_size <= 0) {
+        buffer << "nullptr";
+    } else {
+        buffer << cfam.colls[0];
+        for (int i = 1; i < cfam_size; i++)
+            buffer << "," << std::endl << cfam.colls[i];
+    }
     buffer << "]";
     os << buffer.str();
     return os;

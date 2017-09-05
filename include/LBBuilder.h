@@ -22,7 +22,7 @@ class LBBuilder {
 template<typename T>
 class RandomLBBuilder : public LBBuilder<T, int> {
  public:
-    RandomLBBuilder() { LOG_(trace) << "Created RandomLBBuilder instance (by usual constructor)"; }
+    RandomLBBuilder() {}// LOG_(trace) << "Created RandomLBBuilder instance (by usual constructor)"; }
     ~RandomLBBuilder() {}
 
     ElColl<T> build_lb(const SampleSet<T, int>& train, int group_tag);
@@ -36,7 +36,7 @@ class RandomLBBuilder : public LBBuilder<T, int> {
 
 template<typename T>
 ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class_tag) {
-    LOG_(trace) << "Building local basis...";
+    // LOG_(trace) << "Building local basis...";
 
     ElColl<T> local_basis;
     const GroupSamples<T, int>& tag_class = train.get_group(class_tag);
@@ -52,8 +52,8 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class
     std::iota(std::begin(idx), std::end(idx), 0);
     std::random_shuffle(std::begin(idx), std::end(idx));
 
-    LOG_(trace) << "Working with train set: " << train;
-    LOG_(trace) << "Amount of samples for tag:" << tag_class_size;
+    // LOG_(trace) << "Working with train set: " << train;
+    // LOG_(trace) << "Amount of samples for tag:" << tag_class_size;
 
     // LOG_(trace) << "Need to add " << limit << " random elementary classifiers.";
     // for (int i = 0; local_basis.get_size() < limit; i++) {
@@ -74,14 +74,14 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class
         for (int j = 0; j < tag_class_size; j++) {
             ElClass<T> new_elclass(get_rand_ec(tag_class[idx[j]]));
             if (!local_basis.add(new_elclass)) {
-                LOG_(trace) << "...was rejected.";
+                // LOG_(trace) << "...was rejected.";
             } else {
-                LOG_(trace) << "...was added to local basis!";
+                // LOG_(trace) << "...was added to local basis!";
             }
         }
     }
 
-    LOG_(trace) << "Accomplishing local basis... ";
+    // LOG_(trace) << "Accomplishing local basis... ";
     int tclass_size = tag_class.get_size();
     int tanticlass_size = tag_anticlass.get_total_size();
 
@@ -99,7 +99,7 @@ ElColl<T> RandomLBBuilder<T>::build_lb(const SampleSet<T, int>& train, int class
             }
 
             if(!was_found) {
-                LOG_(trace) << "Zero row was found at " << i*tanticlass_size+j << " entry.";
+                // LOG_(trace) << "Zero row was found at " << i*tanticlass_size+j << " entry.";
                 ElClass<T> new_elclass(get_diff_ec(tag_class[i], tag_anticlass[j]));
                 if (!local_basis.add(new_elclass)) {
                     LOG_(error) << "Can't add " << new_elclass << " to distinguish objects!";
@@ -137,8 +137,8 @@ ElClass<T> RandomLBBuilder<T>::get_rand_ec(const Vec<T>& rand_obj) {
 
 template<typename T>
 ElClass<T> RandomLBBuilder<T>::get_diff_ec(const Vec<T>& fst_obj, const Vec<T>& sec_obj) {
-    LOG_(trace) << "Computing differential elementary classifier...";
-    LOG_(trace) << "Target objects: " << fst_obj << " and " << sec_obj;
+    // LOG_(trace) << "Computing differential elementary classifier...";
+    // LOG_(trace) << "Target objects: " << fst_obj << " and " << sec_obj;
     int num_of_features = fst_obj.get_size();
     Vec<int> diffs;
     Vec<int> equals;
@@ -154,7 +154,7 @@ ElClass<T> RandomLBBuilder<T>::get_diff_ec(const Vec<T>& fst_obj, const Vec<T>& 
 
     int df_features = rand() % (std::max(1, df_size-1)) + 1;
     int eq_features = (eq_size) ? rand() % (std::max(1, static_cast<int>(0.4 * eq_size))) + 1 : 0;
-    LOG_(trace) << "Taking " << df_features << "+" << eq_features << " features";
+    // LOG_(trace) << "Taking " << df_features << "+" << eq_features << " features";
 
     int* init_cols = new int[df_features + eq_features];
     T* init_vals = new T[df_features + eq_features];

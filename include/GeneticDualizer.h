@@ -54,7 +54,7 @@ enum ScoreFuncType {
 };
 template<typename S, typename T>
 class GeneticDualizer : public GeneticAlgorithm<S, int, T> {
-    SampleHandler<S, int> sample_handler;
+    SplitterSH<S, int> sample_handler;
     ElColl<S> local_basis;
 
     bool is_max_sf;
@@ -112,20 +112,20 @@ GenDualInitiator<S, T>::GenDualInitiator(const GenDualInitiator<S, T>& gi_obj,
 
 template<typename S, typename T>
 Population<T> GenDualInitiator<S, T>::get_init_population(const SampleSet<S, int>& sample_set) {
-    LOG_(trace) << "GenDualInitiator is processing initial population...";
+    // LOG_(trace) << "GenDualInitiator is processing initial population...";
 
     Population<T> out_popul;
     Mat<bool> gen_matrix(my_parent->get_gen_matrix());
     int lim = (this->popul_lim) ? this->popul_lim : sample_set.get_total_size() * this->popul_frac;
-    LOG_(trace) << "Need to get " << lim << " chromosomes.";
+    // LOG_(trace) << "Need to get " << lim << " chromosomes.";
 
     int overheat_cnt = 0;
     for (int i = 0; i < lim; i++) {
         Vec<T> new_genes(covering_handler.build_covering(gen_matrix));
-        LOG_(trace) << "New genes for chromosome were generated as covering: " << new_genes;
+        // LOG_(trace) << "New genes for chromosome were generated as covering: " << new_genes;
 
         new_genes = covering_handler.make_covering_deadend(gen_matrix, new_genes);
-        LOG_(trace) << "New genes were adapted for deadend-covering: " << new_genes;
+        // LOG_(trace) << "New genes were adapted for deadend-covering: " << new_genes;
         if(!out_popul.add_chromo(Chromosome<T>(new_genes))) {
             overheat_cnt++;
             i--;
@@ -137,8 +137,8 @@ Population<T> GenDualInitiator<S, T>::get_init_population(const SampleSet<S, int
             break;
         }
     }
-    LOG_(trace) << "Initial population was successfully created.";
-    LOG_(trace) << "Initial population is formed with " << out_popul.get_size() << " chromos.";
+    // LOG_(trace) << "Initial population was successfully created.";
+    // LOG_(trace) << "Initial population is formed with " << out_popul.get_size() << " chromos.";
     return out_popul;
 }
 
@@ -165,33 +165,30 @@ GenDualMutator<S, T>::GenDualMutator(const GenDualMutator<S, T>& gm_obj,
 template<typename S, typename T>
 Population<T> GenDualMutator<S, T>::mutate_population(const Population<T>& in_popul) {
     float mut_frac = 1.0 - 1.0/(mutation_rate * (curr_iter+1) + 1.0);
-    LOG_(trace) << "Mutation fraction: " << mut_frac;
+    // LOG_(trace) << "Mutation fraction: " << mut_frac;
     int popul_size = in_popul.get_size();
     int needed_size = (this->popul_frac) ? popul_size * this->popul_frac : this->popul_lim;
-
-    LOG_(trace) << "Need to mutate " << needed_size << " out of " << popul_size;
+    // LOG_(trace) << "Need to mutate " << needed_size << " out of " << popul_size;
     std::vector<int> idx(popul_size);
     std::iota(idx.begin(), idx.end(), 0);
     std::random_shuffle(idx.begin(), idx.end());
-
     Population<T> out_popul;
     if (std::is_same<T, bool>::value) {
-        LOG_(trace) << "Using <bool> case...";
-
+        // LOG_(trace) << "Using <bool> case...";
         for (int i = 0; i < needed_size; i++) {
-            LOG_(trace) << "Processing " << idx[i] << " chromosome...";
+            // LOG_(trace) << "Processing " << idx[i] << " chromosome...";
             int chromo_len = in_popul[idx[i]].get_size();
             Vec<T> mut_chromo_vec(chromo_len);
             for (int j = 0; j < chromo_len; j++) {
                 if (static_cast<float>(rand()) / (RAND_MAX) > mut_frac) {
                     mut_chromo_vec[j] = in_popul[idx[i]][j];
                 } else {
-                    LOG_(trace) << "Mutation occured on " << j << " position";
+                    // LOG_(trace) << "Mutation occured on " << j << " position";
                     mut_chromo_vec[j] = !in_popul[idx[i]][j];
                 }
             }
             Chromosome<T> mut_chromo(mut_chromo_vec);
-            LOG_(trace) << "Mutated chromosome was formed: " << mut_chromo;
+            // LOG_(trace) << "Mutated chromosome was formed: " << mut_chromo;
             out_popul.add_chromo(mut_chromo);
         }
     } else if (std::is_same<T, int>::value) {
@@ -216,7 +213,7 @@ Population<T> GenDualMutator<S, T>::mutate_population(const Population<T>& in_po
             out_popul.add_chromo(mut_chromo);
         }
     }
-    LOG_(trace) << "Mutated population was formed:" << out_popul;
+    // LOG_(trace) << "Mutated population was formed:" << out_popul;
     return recover_admissibility(out_popul);
 }
 
@@ -248,7 +245,7 @@ GeneticDualizer<S, T>::GeneticDualizer(int popul_size, float mut_frac, bool init
                                         new SequentialMerger<T>(init_max_sf),
                                         init_tcrit,
                                         init_tcrit_val),
-            sample_handler(),
+            sample_handler(0.9),
             local_basis(),
             is_max_sf(init_max_sf),
             score_func(init_sf),
@@ -292,7 +289,7 @@ GeneticDualizer<S, T>::GeneticDualizer(const GeneticDualizer<S, T>& gd_obj):
 
 template<typename S, typename T>
 GeneticDualizer<S, T>::~GeneticDualizer() {
-    LOG_(trace) << "Deleting pointers to algo instances...";
+    // LOG_(trace) << "Deleting pointers to algo instances...";
     delete this->initiator;
     delete this->selector;
     delete this->breeder;
@@ -324,7 +321,7 @@ Vec<ElColl<S> > GeneticDualizer<S, T>::decode_collections(Vec< Vec<T> > in_code)
 template<typename S, typename T>
 void GeneticDualizer<S, T>::update_costs(Population<T>* children_popul,
                                          Population<T>* parents_popul) {
-     LOG_(trace) << "Updating costs of children/parents' population...";
+     // LOG_(trace) << "Updating costs of children/parents' population...";
      float min_val = -1.0;
 
      int children_num = children_popul->get_size();
@@ -370,8 +367,8 @@ void GeneticDualizer<S, T>::update_costs(Population<T>* children_popul,
          if (parents_quals[i] < min_val || min_val < 0.0)
              min_val = parents_quals[i];
      }
-     LOG_(trace) << "Children' absolute qualities:" << Vec<float>(children_num, children_quals);
-     LOG_(trace) << "Parents' absolute qualities:" << Vec<float>(parents_num, parents_quals);
+     // LOG_(trace) << "Children' absolute qualities:" << Vec<float>(children_num, children_quals);
+     // LOG_(trace) << "Parents' absolute qualities:" << Vec<float>(parents_num, parents_quals);
 
      for (int i = 0; i < children_num; i++)
          (*children_popul)[i].set_score(children_quals[i]-min_val+1.0);
@@ -385,7 +382,7 @@ void GeneticDualizer<S, T>::update_costs(Population<T>* children_popul,
 
 template<typename S, typename T>
 void GeneticDualizer<S, T>::update_costs(Population<T>* in_popul) {
-    LOG_(trace) << "Updating costs of population " << (*in_popul);
+    // LOG_(trace) << "Updating costs of population " << (*in_popul);
 
     int chromo_num = in_popul->get_size();
     float* qualities = new float[chromo_num];
@@ -501,15 +498,20 @@ template<typename S, typename T>
 void GeneticDualizer<S, T>::set_init_data(const SampleSet<S, int>& init_set,
                                           const ElColl<S>& init_lb,
                                           int init_target_tag) {
-    LOG_(trace) << "Setting initial data...";
+    // LOG_(trace) << "Setting initial data...";
+    Mat<S> init_X;
+    Vec<int> init_y;
+    init_set.get_data(&init_X, &init_y);
+    Vec< SampleSet<S, int> > data = sample_handler.make_samples(init_X, init_y)[0];
+    basic = data[0];
+    valid = data[1];
 
-    sample_handler.make_train_and_valid(init_set, &basic, &valid);
-    LOG_(trace) << "Training set was splitted into train/valid sets.";
+    // LOG_(trace) << "Training set was splitted into train/valid sets.";
 
     local_basis = init_lb;
     target_tag = init_target_tag;
-    LOG_(trace) << "Train set for further computations:" << basic;
-    LOG_(trace) << "Valid set for further computations:" << valid;
+    // LOG_(trace) << "Train set for further computations:" << basic;
+    // LOG_(trace) << "Valid set for further computations:" << valid;
 
     const GroupSamples<S, int>& tag_class = basic.get_group(target_tag);
     SampleSet<S, int> tag_anticlass(basic.get_antigroup(target_tag));
@@ -534,9 +536,9 @@ void GeneticDualizer<S, T>::set_init_data(const SampleSet<S, int>& init_set,
                 lb_weights[j] += class_vec[j];
         }
 
-        LOG_(trace) << "Weights for local basis were created.";
-        LOG_(trace) << local_basis;
-        LOG_(trace) << "Weights:" << lb_weights;
+        // LOG_(trace) << "Weights for local basis were created.";
+        // LOG_(trace) << local_basis;
+        // LOG_(trace) << "Weights:" << lb_weights;
     }
 
     gen_matrix = Mat<bool>(0, lb_size);
@@ -553,7 +555,7 @@ void GeneticDualizer<S, T>::set_init_data(const SampleSet<S, int>& init_set,
                 gen_matrix.hadd(bin_vec);
         }
     }
-    LOG_(trace) << "Created gen matrix:" << gen_matrix;
+    // LOG_(trace) << "Created gen matrix:" << gen_matrix;
 }
 
 template<typename S, typename T>
@@ -567,8 +569,8 @@ void GeneticDualizer<S, T>::set_matrix(const Mat<bool>& new_matrix) {
         for (int i = 0; i < mat_sy; i++)
             lb_weights[i] = 1.0/mat_sy;
 
-        LOG_(trace) << "Uniform weights were set.";
-        LOG_(trace) << "Weights:" << lb_weights;
+        // LOG_(trace) << "Uniform weights were set.";
+        // LOG_(trace) << "Weights:" << lb_weights;
     }
 }
 

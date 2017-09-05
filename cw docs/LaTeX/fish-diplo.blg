@@ -2,14 +2,14 @@ This is BibTeX, Version 0.99d (TeX Live 2015/Debian)
 Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: fish-diplo.aux
 I couldn't open style file gost71s.bst
----line 24 of file fish-diplo.aux
+---line 26 of file fish-diplo.aux
  : \bibstyle{gost71s
  :                  }
 I'm skipping whatever remains of this command
 I found no style file---while reading file fish-diplo.aux
-You've used 9 entries,
+You've used 11 entries,
             0 wiz_defined-function locations,
-            94 strings with 648 characters,
+            96 strings with 657 characters,
 and the built_in function-call counts, 0 in all, are:
 = -- 0
 > -- 0

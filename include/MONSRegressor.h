@@ -70,8 +70,7 @@ void MONSRegressor<S, T, U>::fit(const Mat<S>& X, const Vec<T>& y) {
         default:
             LOG_(error) << "Unknown Cluster Algorithm Type(code:" << cluster_algorithm << ")";
     }
-    SampleHandler<int, T> sample_handler;
-    cluster_matches = sample_handler.make_samples(y, cluster_y, false);
+    cluster_matches = SampleSet<T, int>(y, cluster_y);
     mons_instance.fit(X, cluster_y);
 }
 

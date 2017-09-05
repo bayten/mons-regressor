@@ -52,18 +52,18 @@ bool CoveringHandler<T>::is_covering(const Mat<bool>& in_mat, const Vec<T>& in_v
 
 template<typename T>
 Vec<T> CoveringHandler<T>::build_covering(const Mat<bool>& in_mat) {
-    LOG_(trace) << "Building new covering of " << in_mat;
+    // LOG_(trace) << "Building new covering of " << in_mat;
 
     if (std::is_same<T, bool>::value) {
-        LOG_(trace) << "Using boolean covering...";
+        // LOG_(trace) << "Using boolean covering...";
 
         int mat_sy = in_mat.get_sy();
         Vec<T> new_vec(mat_sy);
         for (int i = 0; i < mat_sy; i++)
             new_vec[i] = rand() % 2;
-        LOG_(trace) << "Random covering was generated: " << new_vec;
+        // LOG_(trace) << "Random covering was generated: " << new_vec;
         if (!is_covering(in_mat, new_vec)) {
-            LOG_(trace) << "Generated vector is not a covering.";
+            // LOG_(trace) << "Generated vector is not a covering.";
             new_vec = complete_to_covering(in_mat, new_vec);
         }
         if (!is_covering(in_mat, new_vec)) {
@@ -71,7 +71,7 @@ Vec<T> CoveringHandler<T>::build_covering(const Mat<bool>& in_mat) {
         }
         return new_vec;
     } else if (std::is_same<T, int>::value) {
-        LOG_(trace) << "Using integer covering...";
+        // LOG_(trace) << "Using integer covering...";
 
         int mat_sx = in_mat.get_sx();
         Vec<T> new_vec(mat_sx);
@@ -122,7 +122,7 @@ Vec<T> CoveringHandler<T>::make_covering_deadend(const Mat<bool>& in_mat,
         Vec<int> selected_cols = get_ones_places(in_vec);
         Vec<T> deadend_vec = in_vec;
         int ones_sz = selected_cols.get_size();
-        std::random_shuffle(&(selected_cols[0]), &(selected_cols[1])+1);
+        std::random_shuffle(&(selected_cols[0]), &(selected_cols[-1])+1);
 
         for (int i = 0; i < ones_sz; i++) {
             deadend_vec[selected_cols[i]] = 0;

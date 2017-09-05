@@ -12,8 +12,8 @@ namespace cluster_algos{
 
 enum MetricType {
     kManhattan = 0,
-    kEuclidean = 1
-    // kCosine = 2
+    kEuclidean = 1,
+    kCosine = 2
 };
 
 template<typename S>
@@ -35,6 +35,19 @@ float find_dist(const Vec<S>& fst_obj, const Vec<S>& sec_obj, MetricType used_me
                 out_dist += diff*diff;
             }
             out_dist = sqrt(out_dist);
+            break;
+        }
+
+        case kCosine: {
+            S numer = fst_obj[0]*sec_obj[0];
+            S denom1 = fst_obj[0]*fst_obj[0];
+            S denom2 = sec_obj[0]*sec_obj[0];
+            for (int i = 1; i < obj_len; i++) {
+                numer += fst_obj[i]*sec_obj[i];
+                denom1 = fst_obj[i]*fst_obj[i];
+                denom2 = sec_obj[i]*sec_obj[i];
+            }
+            out_dist = numer / (sqrt(denom1) * sqrt(denom2));
             break;
         }
 

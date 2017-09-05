@@ -291,7 +291,7 @@ int Vec<T>::where(const T& obj) {
 
 template<typename T>
 Vec<T> Vec<T>::slice(int begin, int end) const {
-    LOG_(trace) << "Getting slice(" << begin << ", " << end << ") from " << (*this) << "...";
+    // LOG_(trace) << "Getting slice(" << begin << ", " << end << ") from " << (*this) << "...";
 
     if (end == -1)
         end = sz;
@@ -307,7 +307,7 @@ Vec<T> Vec<T>::slice(int begin, int end) const {
     for (int i = 0; i < slice_sz; i++)
         slice_vec[i] = data[begin+i];
 
-    LOG_(trace) << "Slice: " << slice_vec;
+    // LOG_(trace) << "Slice: " << slice_vec;
     return slice_vec;
 }
 
@@ -465,20 +465,27 @@ const Vec<T>& Mat<T>::operator[](int index) const {
 
 template<typename S>
 std::ostream& operator<<(std::ostream& os, const Mat<S>& mat) {
-    os << "Mat(" << mat.sx << "," << mat.sy << "):[" << std::endl;
+    os << "Mat(" << mat.sx << "," << mat.sy << "):|" << std::endl;
+    // if (mat.sx < 1) {
+    //     os << "nullptr" << std::endl;
+    // } else if (mat.sx < 17) {
+    //     for (int i = 0; i < mat.sx; i++)
+    //         os << mat.data[i] << "," << std::endl;
+    // } else {
+    //     for (int i = 0; i < 3; i++)
+    //         os << mat.data[i] << "," << std::endl;
+    //     os << "... ," << std::endl;
+    //     for (int i = mat.sx-3; i < mat.sx; i++)
+    //         os << mat.data[i] << "," << std::endl;
+    // }
+
     if (mat.sx < 1) {
         os << "nullptr" << std::endl;
-    } else if (mat.sx < 17) {
+    } else{
         for (int i = 0; i < mat.sx; i++)
             os << mat.data[i] << "," << std::endl;
-    } else {
-        for (int i = 0; i < 3; i++)
-            os << mat.data[i] << "," << std::endl;
-        os << "... ," << std::endl;
-        for (int i = mat.sx-3; i < mat.sx; i++)
-            os << mat.data[i] << "," << std::endl;
     }
-    os << "]";
+    os << "|";
     return os;
 }
 

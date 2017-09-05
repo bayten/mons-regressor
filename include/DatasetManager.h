@@ -49,7 +49,7 @@ template<typename T>
 bool DatasetManager<T>::write_csv(const char path[], Mat<T> data) {
     std::ofstream out_file;
     out_file.open(path);
-    LOG_(trace) << "Outputting following mat:" << data;
+    // LOG_(trace) << "Outputting following mat:" << data;
     int sx = data.get_sx(), sy = data.get_sy();
     for (int i = 0; i < sx; i++) {
         for (int j = 0; j < sy; j++) {

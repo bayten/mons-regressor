@@ -120,39 +120,39 @@ GeneticAlgorithm<S, T, U>::GeneticAlgorithm(GeneticInitiator<S, T, U>* init_init
 
 template<typename S, typename T, typename U>
 Vec< Vec<U> > GeneticAlgorithm<S, T, U>::execute_ga() {
-    LOG_(trace) << "Executing Genetic Algorithm...";
+    // LOG_(trace) << "Executing Genetic Algorithm...";
 
     Population<U> curr_population = initiator->get_init_population(sample_set);
     int64_t iter_count = 0L;
     update_costs(&curr_population);
 
     while (true) {
-        LOG_(trace) << "Current costs: " << curr_population;
+        // LOG_(trace) << "Current costs: " << curr_population;
 
         Population<U> breed_population = selector->select_population(curr_population);
         if (breed_population.get_size() <= 1) {
-            LOG_(error) << "Population has degradated.";
+            LOG_(warning) << "Population has degradated.";
             return curr_population.get_popul_data();
         }
 
-        LOG_(trace) << "Selected population for breeding: " << breed_population;
+        // LOG_(trace) << "Selected population for breeding: " << breed_population;
         Population<U> children_population = breeder->breed_new_population(breed_population);
-        LOG_(trace) << "Children population: " << children_population;
+        // LOG_(trace) << "Children population: " << children_population;
 
         children_population = mutator->mutate_population(children_population);
-        LOG_(trace) << "Mutated population: " << children_population;
+        // LOG_(trace) << "Mutated population: " << children_population;
 
         update_costs(&children_population, &curr_population);
 
-        LOG_(trace) << "Children population: " << children_population;
-        LOG_(trace) << "Parents population: " << curr_population;
+        // LOG_(trace) << "Children population: " << children_population;
+        // LOG_(trace) << "Parents population: " << curr_population;
 
         Population<U> new_population = merger->merge_populations(curr_population,
                                                                  children_population);
-        LOG_(trace) << "New population: " << new_population;
+        // LOG_(trace) << "New population: " << new_population;
 
         if (check_term_crit(curr_population, new_population, iter_count)) {
-            LOG_(trace) << "Termination criteria is satisfied.";
+            // LOG_(trace) << "Termination criteria is satisfied.";
             return new_population.get_popul_data();
         }
         curr_population = new_population;

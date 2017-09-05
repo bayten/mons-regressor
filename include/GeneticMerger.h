@@ -57,7 +57,7 @@ Population<T> SequentialMerger<T>::merge_populations(const Population<T>& parent
             if ((scores[j] < my_score) == this->is_max_sf)
                 replace_idx.append(j);
 
-        LOG_(trace) << "Final candidates to be replaced:" << replace_idx;
+        // LOG_(trace) << "Final candidates to be replaced:" << replace_idx;
         if (!replace_idx.get_size())
             continue;
         int replaced_idx = replace_idx[rand() % replace_idx.get_size()];
