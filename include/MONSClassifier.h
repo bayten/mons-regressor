@@ -334,6 +334,7 @@ bool MONSClassifier<S, T>::check_margin(const SampleSet<S, int>& valid,
             if (new_margins[curr_idx] - (*avg_margins)[curr_idx] >= eps) {
                 LOG_(trace) << "For idx " << curr_idx << " condition is not satisfied!";
                 LOG_(trace) << "Delta: " << new_margins[curr_idx] - (*avg_margins)[curr_idx];
+                LOG_(trace) << "Eps:" << eps;
                 was_satisfied = 0;
             }
             curr_idx++;

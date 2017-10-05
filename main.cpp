@@ -3,8 +3,12 @@
 #include <iostream>
 #include "log_wrapper.h"
 #include "ml_metrics.h"
+
 #include "MONSRegressor.h"
 #include "DatasetManager.h"
+
+#include "SampleSet.h"
+#include "SampleHandler.h"
 
 using namespace ml_metrics;
 using namespace cluster_algos;
@@ -12,48 +16,44 @@ using namespace cluster_algos;
 int main(int argc, char* argv[]) {
     init_logging();
 
-    // LOG_(trace) << "A trace severity message";
-    // LOG_(debug) << "A debug severity message";
-    // LOG_(info) << "An informational severity message";
-    // LOG_(warning) << "A warning severity message";
-    // LOG_(error) << "An error severity message";
-    // LOG_(fatal) << "A fatal severity message";
-
     DatasetManager<float> data_reader;
-    Mat<float> data = data_reader.read_csv("two-moons.csv");
-    Vec<float> float_target = data.get_col(-1);
-    int float_target_sz = float_target.get_size();
-    Vec<int> target(float_target_sz);
+    Mat<float> in_data = data_reader.read_csv("datasets/real/09_cancer_wpbc.csv");
+    Vec<float> in_target = in_data.get_col(-1);
+    in_data = in_data.get_rect(0, 0, -1, in_data.get_sy()-1);
 
-    for (int i = 0; i < float_target_sz; i++)
-        target[i] = static_cast<int>(float_target[i]);
+    CrossValSH<float, float> cv_sh(10);
+    Mat< SampleSet<float, float> > data_mat = cv_sh.make_samples(in_data, in_target, true, false);
+    // int data_num = data_mat.get_sx();
+    // LOG_(trace) << "Made sample sets successfully!";
+    // LOG_(trace) << "Here:" << data_mat;
+    Vec<float> ca_params(3, {cluster_algos::kEuclidean, 3, 3});
+    GeneticDualizer<float, bool> gen_dual(3, 0.01, true, kDataScore, kDelayConverged, 0.0005);
+    MONSRegressor<float, float, bool> mons(gen_dual, kDMDBSCAN, ca_params, \
+                                           new RandomLBBuilder<float>(),
+                                           1000, 0.0001, kGenoType, kNearestNeighboors);
 
-    data = data.get_rect(0, 0, -1, data.get_sy()-1);
-    LOG_(info) << "Data matrix: " << data;
-    LOG_(info) << "Target vector: " << target;
+    Mat<float> dummy_data;
+    Vec<float> dummy_target;
+    Vec<float> dummy_answer;
 
-    float train_frac = 0.8;
-    Mat<float> train_data = data.get_rect(0, 0, data.get_sx()*train_frac, -1);
-    Vec<int> train_target = target.slice(0, target.get_size()*train_frac);
-    Mat<float> test_data = data.get_rect(data.get_sx()*train_frac+1, 0, -1, -1);
-    Vec<int> test_target = target.slice(target.get_size()*train_frac+1, -1);
+    Vec<float> quality(10);
 
+    for (int i = 0; i < 10; i++) {
+        data_mat[i][0].get_data(&dummy_data, &dummy_target);
+        mons.fit(dummy_data, dummy_target);
+        data_mat[i][1].get_data(&dummy_data, &dummy_target);
+        LOG_(trace) << "Going to predict everything";
+        dummy_answer = mons.predict(dummy_data);
+        LOG_(trace) << "Answer:" << dummy_answer;
+        LOG_(trace) << "Real:" << dummy_target;
+        quality[i] = ml_mse<float>(dummy_answer, dummy_target);
+        LOG_(info) << "MSE " << i << ": " << quality[i];
+    }
+    float avg_quality = 0.0;
+    for (int i = 0; i < 10; i++)
+        avg_quality += quality[i];
+    LOG_(info) << "Quality:" << quality;
+    LOG_(info) << "Avg quality:" << avg_quality/10;
 
-    LOG_(info) << "TRAIN Data matrix: " << train_data;
-    LOG_(info) << "TRAIN Target vector: " << train_target;
-
-
-    LOG_(info) << "TEST Data matrix: " << test_data;
-    LOG_(info) << "TEST Target vector: " << test_target;
-    Vec<float> ca_params(2, {cluster_algos::kEuclidean, 7});
-    GeneticDualizer<float, bool> gen_dual(5, 0.1, true, kDataScore, kDelayConverged, 0.001);
-    MONSRegressor<float, int, bool> mons(gen_dual, new RandomLBBuilder<float>(), kDMDBSCAN, ca_params);
-    mons.fit(train_data, train_target);
-
-    LOG_(info) << "MONS was fitted successfully.";
-    Vec<int> answ_target = mons.predict(test_data);
-    LOG_(info) << "Answer was predicted successfully...";
-    LOG_(info) << "Metric: " << ml_accuracy<int>(answ_target, test_target);
-    LOG_(debug) << "Program ended successfully.";
     return 0;
 }

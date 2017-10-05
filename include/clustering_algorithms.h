@@ -214,7 +214,8 @@ Vec<int> dmdbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
     }
 
     Vec<float> kdist_data_sorted = kdist_data.sort();
-    Vec<float> kdist_smoothed = mean_filter(kdist_data_sorted, min_neigh);
+    Vec<float> kdist_smoothed = mean_filter(kdist_data_sorted, min_neigh/2);
+    // Vec<float> kdist_smoothed = kdist_data_sorted;
     Vec<float> kdist_fst_deriv = get_diff_deriv(kdist_smoothed);
     Vec<float> kdist_sec_deriv = get_diff_deriv(kdist_fst_deriv);
     LOG_(trace) << "DATA SORTED: " << kdist_data_sorted;

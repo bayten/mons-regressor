@@ -21,6 +21,15 @@ float ml_accuracy(Vec<T> fst, Vec<T> sec) {
     return res/sz;
 }
 
+template<typename T>
+float ml_mse(Vec<T> fst, Vec<T> sec) {
+    int sz = fst.get_size();
+    float res = 0.0;
+    for (int i = 0; i < sz; i++)
+        res += (fst[i] - sec[i])*(fst[i] - sec[i]);
+    return res/float(sz);
+}
+
 }
 
 #endif  // INCLUDE_ML_METRICS_H_

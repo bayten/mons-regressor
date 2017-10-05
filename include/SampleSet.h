@@ -126,7 +126,7 @@ std::ostream& operator<<(std::ostream& os, const GroupSamples<U, V>& gr_samps) {
 template<typename S, typename T>
 SampleSet<S, T>::SampleSet(const Vec<S>& X, const Vec<T>& y) {
     int obj_num = y.get_size();
-    Mat<S> dummy_mat(1, obj_num);
+    Mat<S> dummy_mat(obj_num, 1);
     for (int i = 0; i < obj_num; i++)
         dummy_mat[i][0] = X[i];
 
