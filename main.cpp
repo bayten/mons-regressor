@@ -17,7 +17,11 @@ int main(int argc, char* argv[]) {
     init_logging();
 
     DatasetManager<float> data_reader;
-    Mat<float> in_data = data_reader.read_csv("datasets/real/09_cancer_wpbc.csv");
+    char path[1000] = "datasets/real/09_cancer_wpbc.csv";
+    if (argc > 1) {
+        strcpy(path, argv[1]);
+    }
+    Mat<float> in_data = data_reader.read_csv(path);
     Vec<float> in_target = in_data.get_col(-1);
     in_data = in_data.get_rect(0, 0, -1, in_data.get_sy()-1);
 
@@ -54,6 +58,8 @@ int main(int argc, char* argv[]) {
         avg_quality += quality[i];
     LOG_(info) << "Quality:" << quality;
     LOG_(info) << "Avg quality:" << avg_quality/10;
-
+    std::cout << "Quality for folds:" << quality;
+    std::cout << "Average quality:" << avg_quality/10;
+    
     return 0;
 }

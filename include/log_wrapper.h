@@ -31,7 +31,7 @@ void init_logging() {
                           keywords::auto_flush = true,
                           keywords::format = "(%TimeStamp%)[%Severity%]: %Message%");
 
-    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
+    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::warning);
     logging::add_common_attributes();
 }
 
