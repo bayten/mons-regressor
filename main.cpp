@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     init_logging();
 
     DatasetManager<float> data_reader;
-    char path[1000] = "datasets/real/09_cancer_wpbc.csv";
+    char path[1000] = "datasets/09_cancer_wpbc.csv";
     if (argc > 1) {
         strcpy(path, argv[1]);
     }
