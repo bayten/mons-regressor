@@ -23,6 +23,11 @@ class DatasetManager {
 template<typename T>
 Mat<T> DatasetManager<T>::read_csv(const char path[], char sep) {
     std::ifstream file(path);
+    if (file.fail()) {
+        LOG_(error) << "Input file \"" << path << "\" doesn't exist.";
+        return Mat<T>();
+    }
+
     std::string entry_val;
 
     std::getline(file, entry_val);  // get size of Y-axis from this one

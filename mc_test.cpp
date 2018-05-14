@@ -1,5 +1,11 @@
 /* Copyright 2017 Baytekov Nikita */
 
+//=================================
+// MONS Classifier test
+//---------------------------------
+// Testing MONSClassifier's quality
+//=================================
+
 #include <iostream>
 #include "log_wrapper.h"
 #include "MONSClassifier.h"
@@ -9,6 +15,7 @@
 #include "SampleHandler.h"
 
 #include "ml_metrics.h"
+
 
 using namespace ml_metrics;
 

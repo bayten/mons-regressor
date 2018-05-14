@@ -17,6 +17,15 @@
 
 #define LOG_(x) BOOST_LOG_TRIVIAL(x)
 
+enum SeverityType {
+    kTrace = 0,
+    kDebug = 1,
+    kInfo = 2,
+    kWarning = 3,
+    kError = 4,
+    kFatal = 5
+};
+
 namespace logging = boost::log;
 namespace sinks = boost::log::sinks;
 namespace src = boost::log::sources;
@@ -25,13 +34,43 @@ namespace attrs = boost::log::attributes;
 namespace keywords = boost::log::keywords;
 
 
-void init_logging() {
+void init_logging(SeverityType sev_level=kInfo) {
     logging::register_simple_formatter_factory<logging::trivial::severity_level, char>("Severity");
     logging::add_file_log(keywords::file_name = "%Y-%m-%d.log",
                           keywords::auto_flush = true,
                           keywords::format = "(%TimeStamp%)[%Severity%]: %Message%");
+    auto sev_filter = logging::trivial::info;
 
-    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::warning);
+    switch(sev_level) {
+        case kTrace:
+            sev_filter = logging::trivial::trace;
+            break;
+
+        case kDebug:
+            sev_filter = logging::trivial::debug;
+            break;
+
+        case kInfo:
+            sev_filter = logging::trivial::info;
+            break;
+
+        case kWarning:
+            sev_filter = logging::trivial::warning;
+            break;
+
+        case kError:
+            sev_filter = logging::trivial::error;
+            break;
+
+        case kFatal:
+            sev_filter = logging::trivial::fatal;
+            break;
+
+        default:
+            break;
+    }
+
+    logging::core::get()->set_filter(logging::trivial::severity >= sev_filter);
     logging::add_common_attributes();
 }
 

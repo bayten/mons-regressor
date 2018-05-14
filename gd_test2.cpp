@@ -1,5 +1,11 @@
 /* Copyright 2017 Baytekov Nikita */
 
+//======================================
+// Genetic Dualizer test 2
+//--------------------------------------
+// Testing GD for working with DataScore
+//======================================
+
 #include <iostream>
 #include <ctime>
 #include "log_wrapper.h"
@@ -69,11 +75,24 @@ void get_rand_data(Mat<int>* mat, Vec<int>* vec) {
     }
 }
 
-void get_rand_matrix(Mat<bool>* mat) {
+void get_rand_matrix(Mat<bool>* mat, int ones_per_row) {
     int sx = mat->get_sx();
     int sy = mat->get_sy();
 
-    for (int i = 0; i < sx; i++)
+    for (int i = 0; i < sx; i++) {
         for (int j = 0; j < sy; j++)
-            (*mat)[i][j] = rand() % 2;
+            (*mat)[i][j] = 0;
+
+        for (int j = 0; j < ones_per_row; j++) {
+            int rand_place = rand() % (sy-j);
+            int k = 0, ind = 0;
+            while (k != rand_place) {
+                if ((*mat)[i][ind] == 0)
+                    k++;
+                ind++;
+            }
+            (*mat)[i][ind-1] = 1;
+        }
+    }
+    return;
 }

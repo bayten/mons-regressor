@@ -176,7 +176,7 @@ Mat< SampleSet<S, T> > CrossValSH<S, T>::make_samples(const Mat<S>& X, const Vec
         int fold_sz = X.get_sx() / folds_num;
         LOG_(trace) << "fold_sz: " << fold_sz;
         data_mat[0][0] = SampleSet<S, T>(sh_X.get_rect(fold_sz,0,-1,-1), sh_y.slice(fold_sz,-1));
-        data_mat[0][1] = SampleSet<S, T>(sh_X.get_rect(0,-1,fold_sz,-1), sh_y.slice(0,fold_sz));
+        data_mat[0][1] = SampleSet<S, T>(sh_X.get_rect(0,0,fold_sz,-1), sh_y.slice(0,fold_sz));
 
         for (int i = 1; i < folds_num; i++) {
             data_mat[i][0] = SampleSet<S, T>(sh_X.get_rect(0,0,i*fold_sz,-1),

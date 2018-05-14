@@ -61,6 +61,7 @@ class SampleSet {
 
     void append(const Mat<S>& X, const Vec<T>& y);
     void shuffle();
+    void slice_rand(int slice_num, Mat<S>* slice_x, Vec<T>* slice_y) const;
     int get_group_num() const { return groups.get_size(); }
     int get_total_size() const;
     Vec< GroupSamples<S, T> >& get_groups() { return groups; }
@@ -85,11 +86,15 @@ class SampleSet {
 
 template<typename S, typename T>
 void GroupSamples<S, T>::slice_rand(int slice_num, Mat<S>* slice_x, Vec<T>* slice_y) const {
+    std::vector<int>idx(objs.get_sx());
+    std::iota(std::begin(idx), std::end(idx), 0);
+    std::random_shuffle(std::begin(idx), std::end(idx));
+
     *slice_x = Mat<S>(slice_num, objs.get_sy());
     *slice_y = Vec<T>(slice_num);
 
     for (int i = 0; i < slice_num; i++) {
-        (*slice_x)[i] = objs[i];
+        (*slice_x)[i] = objs[idx[i]];
         (*slice_y)[i] = group_tag;
     }
 }
@@ -261,6 +266,25 @@ void SampleSet<S, T>::get_data(Mat<S>* data_dummy, Vec<T>* target_dummy) const {
             (*target_dummy)[out_order[curr_idx]] = group_tag;
             curr_idx++;
         }
+    }
+}
+
+template<typename S, typename T>
+void SampleSet<S, T>::slice_rand(int slice_num, Mat<S>* slice_x, Vec<T>* slice_y) const {
+    Mat<S> fused_data;
+    Vec<T> fused_target;
+    get_data(&fused_data, &fused_target);
+
+    std::vector<int>idx(fused_data.get_sx());
+    std::iota(std::begin(idx), std::end(idx), 0);
+    std::random_shuffle(std::begin(idx), std::end(idx));
+
+    *slice_x = Mat<S>(slice_num, fused_data.get_sy());
+    *slice_y = Vec<T>(slice_num);
+
+    for (int i = 0; i < slice_num; i++) {
+        (*slice_x)[i] = fused_data[idx[i]];
+        (*slice_y)[i] = fused_target[idx[i]];
     }
 }
 

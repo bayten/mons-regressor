@@ -16,7 +16,7 @@ template<typename S, typename T>
 class GenDualInitiator : public GeneticInitiator<S, int, T> {
     GeneticDualizer<S, T>* my_parent;
     CoveringHandler<T> covering_handler;
- public:
+public:
     explicit GenDualInitiator(GeneticDualizer<S, T>* init_parent_ptr,
                               float init_pfrac = 0.0, int init_plim = 0);
     GenDualInitiator(const GenDualInitiator<S, T>& gi_obj,
@@ -49,9 +49,10 @@ class GenDualMutator : public GeneticMutator<T> {
 
 
 enum ScoreFuncType {
-    kDataScore = 0,
-    kWeightedScore = 1
+    kDataScore = 0,  // score (quality of whole collection based on how well it separates the classes)
+    kWeightedScore = 1  // loss (minimizing weighted columns of coverage)
 };
+
 template<typename S, typename T>
 class GeneticDualizer : public GeneticAlgorithm<S, int, T> {
     SplitterSH<S, int> sample_handler;

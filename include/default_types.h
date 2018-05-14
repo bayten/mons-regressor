@@ -37,7 +37,7 @@ class Vec {
     int where(const T& obj);
     Vec<T> slice(int begin, int end) const;
     Vec<T> sort() const;
-    Vec<int> sort_indices() const;
+    Vec<int> sort_indices(bool asc = true) const;
     int get_size() const {
         return sz;
     }
@@ -62,6 +62,8 @@ class Mat {
 
     Mat<T> get_rect(int x1, int y1, int x2 = -1, int y2 = -1) const;
     Vec<T> get_col(int idx = -1) const;
+
+    Mat<T> Tr() const;
 
     Mat<T>& operator=(const Mat<T>& mat_obj);
     Vec<T>& operator[](int index);
@@ -325,12 +327,15 @@ Vec<T> Vec<T>::sort() const {
 }
 
 template<typename T>
-Vec<int> Vec<T>::sort_indices() const {
+Vec<int> Vec<T>::sort_indices(bool asc) const {
     std::vector<int>idx(sz);
     std::iota(std::begin(idx), std::end(idx), 0);
-    std::sort(std::begin(idx), std::end(idx),
-              [this](int i1, int i2) { return this->data[i1] < this->data[i2]; });
-
+    if (asc)
+        std::sort(std::begin(idx), std::end(idx),
+                  [this](int i1, int i2) { return this->data[i1] < this->data[i2]; });
+    else
+        std::sort(std::begin(idx), std::end(idx),
+                  [this](int i1, int i2) { return this->data[i1] > this->data[i2]; });
     Vec<int> out_vec(sz, idx);
     // LOG_(trace) << "Vec of sorted indices: " << out_vec;
     return out_vec;
@@ -422,6 +427,15 @@ Vec<T> Mat<T>::get_col(int idx) const {
     for (int i = 0; i < sx; i++)
         out_vec[i] = data[i][idx];
     return out_vec;
+}
+
+template<typename T>
+Mat<T> Mat<T>::Tr() const {
+    Mat<T> out_mat(sy, sx);
+    for (int i = 0; i < sx; i++)
+        for (int j = 0; j < sy; j++)
+            out_mat[j][i] = data[i][j];
+    return out_mat;
 }
 
 template<typename T>

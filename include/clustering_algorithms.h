@@ -16,11 +16,64 @@ enum MetricType {
     kCosine = 2
 };
 
+enum KernelType {
+    kUniform = 0,
+    kTriangle = 1,
+    kEpanechnikov = 2,
+    kBisquared = 3
+};
+
+
+template<typename S>
+Vec<int> fusion(const Mat<S>& data, MetricType used_metric = kEuclidean,
+                int bins = 10, int col_id = 0) {
+    int samples_num = data.get_sx();
+    int samples_per_bin = samples_num / bins;
+    Vec<int> sorted_col = data.get_col(col_id).sort_indices();
+    Vec<int> target_class(samples_num);
+
+    for(int i = 0; i < samples_num; i++)
+        target_class[sorted_col[i]] = std::min(i % samples_per_bin, bins-1);
+    return target_class;
+}
+
+float find_ker (float u, KernelType used_kernel) {
+    float out = -1;
+    if (fabs(u) > 1)
+        return 0;
+
+    switch (used_kernel) {
+        case kUniform:
+            out = 0.5;
+            break;
+
+        case kTriangle:
+            out = 1-fabs(u);
+            break;
+
+        case kEpanechnikov:
+            out = 0.75*(1 - u*u);
+            break;
+
+        case kBisquared:
+            out = 0.9375*(1-u*u)*(1-u*u);
+            break;
+
+        default:
+            LOG_(error) << "Unknown kernel option: " << used_kernel;
+            break;
+    }
+
+    return out;
+}
+
 template<typename S>
 float find_dist(const Vec<S>& fst_obj, const Vec<S>& sec_obj, MetricType used_metric) {
     // vectors will always have the same length (just not to check it every time)
     float out_dist = 0.0;
     int obj_len = fst_obj.get_size();
+    // LOG_(trace) << "fst_obj size:" << obj_len;
+    // LOG_(trace) << "sec_obj size:" << sec_obj.get_size();
 
     switch (used_metric) {
         case kManhattan: {
@@ -244,7 +297,9 @@ Vec<int> dmdbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
     LOG_(trace) << "Estimated noise borders: " << noise_borders;
     int epses_num = epsilons.get_size();
     Vec<float> matching_epses(samples_num);
-
+    if (epsilons.get_size() < 1) {
+        epsilons.append(kdist_smoothed[int(samples_num/2)]);
+    }
     int noise_idx = 0, noise_sz = noise_borders.get_size();
     for (int i = 0; i < samples_num; i++) {  // acquring points to density levels
         if (kdist_data[i] >= epsilons[-1]) {  // condition of noise point
@@ -266,7 +321,6 @@ Vec<int> dmdbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
             }
         }
     }
-
     int class_label = 1;
     for (int i = 0; i < samples_num; i++) {  // need to process core points only
         if (was_processed[i]) {
@@ -348,5 +402,174 @@ Vec<int> dmdbscan(const Mat<S>& data, MetricType used_metric = kEuclidean,
     return target_class;
 }
 
+template<typename S>
+Vec<int> parzen(const Mat<S>& data, float h, KernelType used_kernel = kEpanechnikov) {
+    Vec<S> vec_data = data[0];
+    // LOG_(info) << "Vector data:" << vec_data;
+    // LOG_(info) << "h param:" << h << "  kernel:" << used_kernel;
+
+    int vec_sz = vec_data.get_size();
+
+    Vec<S> sorted = vec_data.sort();
+    Vec<int> sort_ids = vec_data.sort_indices();
+
+    S min_val = sorted[0];
+    S max_val = sorted[-1];
+
+    // LOG_(info) << "Sorted:" << sorted;
+
+    float dots_sz = 4*vec_sz-3;
+    float step = (float) (max_val-min_val)/dots_sz;
+    Vec<float> density_vals(dots_sz);
+
+    int cnt = 0;
+
+    for (float dot_idx = min_val; (dot_idx < max_val) && (cnt < dots_sz); dot_idx += step) {
+        density_vals[cnt] = 0;
+        for (int i = 0; i < vec_sz; i++) {
+            density_vals[cnt] += find_ker(fabs(dot_idx - vec_data[i])/h, used_kernel);
+        }
+        density_vals[cnt] /= vec_sz*h;
+        cnt++;
+    }
+    density_vals = mean_filter(density_vals, 5);
+    // LOG_(info) << "Density values:" << density_vals;
+
+    Vec<float> deriv_vals = get_diff_deriv(density_vals);
+    // LOG_(info) << "Derivative values:" << deriv_vals;
+
+    Vec<float> min_points(0);
+    Vec<float> border_vals(0);
+    float prev_deriv = deriv_vals[0];
+    for (int i = 1; i < dots_sz; i++) {
+        if (prev_deriv < 0 && deriv_vals[i] > 0) {
+            min_points.append(i);
+            border_vals.append((min_val+(2.0*i+1)*step)/2.0);
+        }
+        if (fabs(deriv_vals[i]) > 0)
+            prev_deriv = deriv_vals[i];
+    }
+    // LOG_(info) << "Min points:" << min_points;
+    // LOG_(info) << "Border values:" << border_vals;
+
+    int clusters = min_points.get_size();
+    Vec<int> labels(vec_sz);
+    int curr_label = 0, curr_border = 0;
+
+    if (border_vals.get_size() < 1) {
+        for (int i = 0; i < vec_sz; i++)
+            labels[i] = 0;
+        return labels;
+    }
+
+    for (int i = 0; i < vec_sz; i++) {
+        if(sorted[i] >= border_vals[curr_border]){
+            while( (curr_border < clusters) && sorted[i] >= border_vals[curr_border])
+                curr_border++;
+            if(curr_border == clusters) {
+                for (; i < vec_sz; i++)
+                    labels[sort_ids[i]] = curr_label;
+                return labels;
+            }
+            curr_label++;
+
+        }
+        labels[sort_ids[i]] = curr_label;
+    }
+
+    return labels;
 }
-#endif  // INCLUDE_GENETIC_TYPES_H_
+
+template<typename S>
+float process_h(float dot_idx, Vec<S> sorted, int k) {
+    int vec_sz = sorted.get_size();
+    Vec<S> dists(vec_sz);
+    k = std::min(k, vec_sz);
+    const float eps = 0.000001;
+    for (int i = 0; i < vec_sz; i++)
+        dists[i] = fabs(sorted[i] - dot_idx);
+
+    return dists[dists.sort_indices()[k-1]]+eps;
+}
+
+template<typename S>
+Vec<int> vparzen(const Mat<S>& data, int k, KernelType used_kernel = kEpanechnikov) {
+    Vec<S> vec_data = data[0];
+    int vec_sz = vec_data.get_size();
+
+    Vec<S> sorted = vec_data.sort();
+    Vec<int> sort_ids = vec_data.sort_indices();
+
+    S min_val = sorted[0];
+    S max_val = sorted[-1];
+
+    float dots_sz = 4*vec_sz-3;
+    float step = (float) (max_val-min_val)/dots_sz;
+    Vec<float> density_vals(dots_sz);
+
+    int cnt = 0;
+
+    double norm_denom = 0.0;
+    for (float dot_idx = min_val; (dot_idx < max_val) && (cnt < dots_sz); dot_idx += step) {
+        density_vals[cnt] = 0;
+        float curr_h = process_h(dot_idx, sorted, k);
+        for (int i = 0; i < vec_sz; i++) {
+            density_vals[cnt] += find_ker(fabs(dot_idx - vec_data[i])/curr_h, used_kernel)/curr_h;
+        }
+        norm_denom += density_vals[cnt];
+        cnt++;
+    }
+    for (int i = 0; i < dots_sz; i++)
+        density_vals[i] /= norm_denom;
+
+    density_vals = mean_filter(density_vals, 5);
+
+    // LOG_(info) << "Density values:" << density_vals;
+
+    Vec<float> deriv_vals = get_diff_deriv(density_vals);
+    // LOG_(info) << "Derivative values:" << deriv_vals;
+
+    Vec<float> min_points(0);
+    Vec<float> border_vals(0);
+    float prev_deriv = deriv_vals[0];
+    for (int i = 1; i < dots_sz; i++) {
+        if (prev_deriv < 0 && deriv_vals[i] > 0) {
+            min_points.append(i);
+            border_vals.append((min_val+(2.0*i+1)*step)/2.0);
+        }
+        if (fabs(deriv_vals[i]) > 0)
+            prev_deriv = deriv_vals[i];
+    }
+    // LOG_(info) << "Min points:" << min_points;
+    // LOG_(info) << "Border values:" << border_vals;
+
+    int clusters = min_points.get_size();
+    Vec<int> labels(vec_sz);
+    int curr_label = 0, curr_border = 0;
+
+    if (border_vals.get_size() < 1) {
+        for (int i = 0; i < vec_sz; i++)
+            labels[i] = 0;
+        return labels;
+    }
+
+    for (int i = 0; i < vec_sz; i++) {
+        if(sorted[i] >= border_vals[curr_border]){
+            while( (curr_border < clusters) && sorted[i] >= border_vals[curr_border])
+                curr_border++;
+            if(curr_border == clusters) {
+                for (; i < vec_sz; i++)
+                    labels[sort_ids[i]] = curr_label;
+                return labels;
+            }
+            curr_label++;
+
+        }
+        labels[sort_ids[i]] = curr_label;
+    }
+
+    return labels;
+}
+
+}
+#endif  // INCLUDE_CLUSTERING_ALGORITHMS_H_

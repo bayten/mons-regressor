@@ -28,7 +28,7 @@ class MONSClassifier {
 
  public:
     explicit MONSClassifier(GeneticDualizer<S, T> init_gen_dual,
-                            LBBuilder<S, int>* init_lb_builder = new RandomLBBuilder<S>(),
+                            LBBuilder<S, int>* init_lb_builder = new ComplementLBBuilder<S>(),
                             int init_miter = 1000, float init_eps = 0.001);
     ~MONSClassifier();
 
@@ -73,8 +73,8 @@ MONSClassifier<S, T>::~MONSClassifier() {
 
 template<typename S, typename T>
 void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
-    // LOG_(trace) << "Process of model fitting has begun...";
-    // LOG_(trace) << "Initial data set:" << train_set;
+    LOG_(trace) << "Process of model fitting has begun...";
+    LOG_(trace) << "Initial data set:" << train_set;
     SampleSet<S, int> train, valid;
     Vec< SampleSet<S, int> > data = sample_handler.make_samples(X, y)[0];
     train = data[0];
@@ -95,7 +95,7 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
     for (int i = 0; i < valid.get_total_size(); i++)
         avg_margins[i] = 0.0;
 
-    // LOG_(trace) << "Starting main fitting loop(class num: " << train_num << ")...";
+    LOG_(trace) << "Starting main fitting loop(class num: " << train_num << ")...";
     for (int i = 1; i <= max_iter; i++) {
         // LOG_(trace) << "Loop iteration: " << i;
         for (int k = 0; k < train_num; k++) {
@@ -103,55 +103,56 @@ void MONSClassifier<S, T>::fit(const Mat<S>& X, const Vec<int>& y) {
             ElColl<S> local_basis = lb_builder->build_lb(train, train_tags[k]);
             // LOG_(trace) << "Local basis: " << local_basis;
 
-            LOG_(trace) << "Processing Genetic Algorithm...";
+            // LOG_(trace) << "Processing Genetic Algorithm...";
             genetic_dualizer.set_init_data(train, local_basis, train_tags[k]);
             Vec< Vec<T> > encoded_colls = genetic_dualizer.execute_ga();
             Vec< ElColl<S> > new_colls = genetic_dualizer.decode_collections(encoded_colls);
 
-            LOG_(trace) << "Adding new collections...:" << new_colls;
+            // LOG_(trace) << "Adding new collections...:" << new_colls;
             coll_sets[k].add(new_colls);
-            LOG_(trace) << "New collections were successfully added.";
+            // LOG_(trace) << "New collections were successfully added.";
 
             // LOG_(trace) << "LOOK HERE! Curr class:" << train_tags[k];
             // LOG_(trace) << "Coll_Families:" << coll_sets;
         }
         if (check_margin(valid, train, &avg_margins, i)) {
-            LOG_(trace) << "Main loop was stopped because of margins' condition";
+            // LOG_(trace) << "Main loop was stopped because of margins' condition";
             break;
         }
     }
+    LOG_(trace) << "Successfull end of fit loop for MONSClassifier";
 }
 
 template<typename S, typename T>
 Vec<int> MONSClassifier<S, T>::predict(const Mat<S> & X) {
-    // LOG_(trace) << "Predicting stuff! Get prepared!";
-    // LOG_(trace) << "Collection sets: " << coll_sets;
+    LOG_(trace) << "Predicting stuff! Get prepared!";
+    LOG_(trace) << "Collection sets: " << coll_sets;
 
     int class_num = coll_sets.get_size();
     int obj_num = X.get_sx();
     Vec<int> class_preds(obj_num);
 
-    // LOG_(trace) << "Getting predictions for tag 0...";
+    LOG_(trace) << "Getting predictions for tag 0...";
     Vec<float> estim_vec = get_class_estim(train_set, X, 0);
     int curr_tag = coll_sets[0].get_tag();
     for (int i = 0; i < obj_num; i++)
         class_preds[i] = curr_tag;
-    // LOG_(trace) << "done!";
+    LOG_(trace) << "done!";
 
     for (int i = 1; i < class_num; i++) {
         curr_tag = coll_sets[i].get_tag();
-        // LOG_(trace) << "Getting predictions for tag " << curr_tag << "...";
+        LOG_(trace) << "Getting predictions for tag " << curr_tag << "...";
         Vec<float> new_estim_vec = get_class_estim(train_set, X, i);
-        // LOG_(trace) << "done!";
+        LOG_(trace) << "done!";
         for (int j = 0; j < obj_num; j++) {
-            // LOG_(trace) << " Checking object " << j << " (" << new_estim_vec[j] << " vs. " << estim_vec[j] << ")";
+            LOG_(trace) << " Checking object " << j << " (" << new_estim_vec[j] << " vs. " << estim_vec[j] << ")";
             if (new_estim_vec[j] > estim_vec[j]) {
-                // LOG_(trace) << "  New estimation is better! Changed!";
+                LOG_(trace) << "  New estimation is better! Changed!";
                 estim_vec[j] = new_estim_vec[j];
                 class_preds[j] = curr_tag;
             }
         }
-        // LOG_(trace) << "After new predictions:" << class_preds;
+        LOG_(trace) << "After new predictions:" << class_preds;
     }
     return class_preds;
 }
@@ -255,12 +256,11 @@ bool MONSClassifier<S, T>::load_train_set(std::ifstream* file_ptr) {
         std::getline(*file_ptr, entry_val, '}');
         int gs_tag = to_type<int>(entry_val);
 
-        int sx = -1, sy = -1;
         std::getline(*file_ptr, entry_val, '(');
         std::getline(*file_ptr, entry_val, ',');
-        sx = to_type<int>(entry_val);
+        int sx = to_type<int>(entry_val);
         std::getline(*file_ptr, entry_val, ')');
-        sy = to_type<int>(entry_val);
+        int sy = to_type<int>(entry_val);
 
         Mat<S> gs_mat(sx, sy);
         for (int j = 0; j < sx; j++) {

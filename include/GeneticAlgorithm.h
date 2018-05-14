@@ -114,7 +114,7 @@ GeneticAlgorithm<S, T, U>::GeneticAlgorithm(GeneticInitiator<S, T, U>* init_init
                 merger(init_merger),
                 term_crit(init_term_crit),
                 term_crit_val(init_term_crit_val),
-                delay_counter(3) {
+                delay_counter(7) {
     LOG_(debug) << "Created GeneticAlgorithm instance (by usual constructor).";
 }
 
